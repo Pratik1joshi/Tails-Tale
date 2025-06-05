@@ -196,12 +196,12 @@ fun LoginBody(){
             }
             Button(
                 onClick = {
-                    if (email == "ram@gmail.com" && password == "123456") {
-                        Toast.makeText(context, "Login Success", Toast.LENGTH_SHORT).show()
-
-                    } else {
-                        Toast.makeText(context, "Invalid credentials", Toast.LENGTH_SHORT).show()
-                    }
+//                    if (email == "ram@gmail.com" && password == "123456") {
+//                        Toast.makeText(context, "Login Success", Toast.LENGTH_SHORT).show()
+//
+//                    } else {
+//                        Toast.makeText(context, "Invalid credentials", Toast.LENGTH_SHORT).show()
+//                    }
                 },
                 modifier = Modifier.width(200.dp)
             ) {
