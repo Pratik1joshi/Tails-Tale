@@ -1,5 +1,6 @@
-package com.example.tailstale
-
+package com.example.tailstale.view
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -42,14 +43,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.tailstale.ui.theme.TailsTaleTheme
+import com.example.tailstale.R
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -207,7 +207,14 @@ fun LoginBody(){
             ) {
                 Text("Login")
             }
-            Text("Don't have an account? Signup Now", modifier = Modifier.padding(vertical = 10.dp))
+
+            Text("Don't have an account? Signup Now",
+                modifier = Modifier.padding(vertical = 10.dp)
+                .clickable {
+                    val intent = Intent(context, SignUpActivity::class.java)
+                    context.startActivity(intent)
+                },
+            )
             Row(
                 modifier = Modifier
                     .padding(horizontal = 10.dp, vertical = 5.dp)

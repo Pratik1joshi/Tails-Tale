@@ -1,4 +1,4 @@
-package com.example.tailstale
+package com.example.tailstale.view
 
 
 import android.app.Activity
@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -25,7 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.tailstale.ui.theme.TailsTaleTheme
+import com.example.tailstale.R
 import kotlinx.coroutines.delay
 
 class SplashActivity : ComponentActivity() {

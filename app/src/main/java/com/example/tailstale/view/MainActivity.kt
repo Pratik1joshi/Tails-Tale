@@ -1,4 +1,4 @@
-package com.example.tailstale
+package com.example.tailstale.view
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
