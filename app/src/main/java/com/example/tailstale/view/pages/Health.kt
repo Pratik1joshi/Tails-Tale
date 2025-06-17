@@ -1,6 +1,5 @@
-package com.example.tailstale.pages
+package com.example.tailstale.view.pages
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
