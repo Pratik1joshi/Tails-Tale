@@ -10,11 +10,14 @@ data class UserModel(
     var profileImageUrl: String = "",
     var coins: Int = 100,
     var gems: Int = 5,
+    var level: Int = 1,
+    var experience: Int = 0,
     var lastLoginDate: Long = System.currentTimeMillis(),
     var creationDate: Long = System.currentTimeMillis(),
     val pets: MutableList<String> = mutableListOf(),
     val inventory: Inventory = Inventory(),
-    val achievements: MutableList<Achievement> = mutableListOf()
+    val achievements: MutableList<Achievement> = mutableListOf(),
+    val learningProgress: LearningProgress = LearningProgress()
 )
 
 data class Inventory(

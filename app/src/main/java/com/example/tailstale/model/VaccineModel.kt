@@ -9,5 +9,7 @@ data class VaccineModel(
     val targetDisease: String,
     val effectiveDurationDays: Int,
     val cost: Int,
-    val compatiblePetTypes: List<PetType>
+    val compatiblePetTypes: Set<PetType>,
+    val ageRequirement: IntRange = 0..Int.MAX_VALUE,
+    val sideEffects: List<String> = emptyList()
 )
