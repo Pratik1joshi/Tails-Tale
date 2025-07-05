@@ -5,4 +5,5 @@
     <string name="title_activity_sign_up">SignUpActivity</string>
     <string name="title_activity_dashboard">DashboardActivity</string>
     <string name="title_activity_test_dashboard">TestDashboardActivity</string>
+    <string name="default_web_client_id">27107909911-j8nkbdqdmra718f5p6nda3dn9fgbt21d.apps.googleusercontent.com</string>
 </resources>
