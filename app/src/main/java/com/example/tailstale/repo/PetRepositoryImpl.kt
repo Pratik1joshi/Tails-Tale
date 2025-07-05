@@ -3,6 +3,7 @@ package com.example.tailstale.repo
 import com.example.tailstale.model.CareAction
 import com.example.tailstale.model.PetModel
 import com.example.tailstale.model.VaccineRecord
+import com.google.firebase.auth.FirebaseAuth
 
 class PetRepositoryImpl : PetRepository {
     private val pets = mutableMapOf<String, PetModel>()
@@ -11,6 +12,14 @@ class PetRepositoryImpl : PetRepository {
     override suspend fun createPet(pet: PetModel): Result<PetModel> {
         return try {
             pets[pet.id] = pet
+
+            // Link pet to current user
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+            if (currentUserId != null) {
+                val userPetList = userPets.getOrPut(currentUserId) { mutableListOf() }
+                userPetList.add(pet.id)
+            }
+
             Result.success(pet)
         } catch (e: Exception) {
             Result.failure(e)

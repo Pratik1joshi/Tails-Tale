@@ -52,7 +52,7 @@ fun SplashBody() {
 //    val localEmail : String = sharedPreferences.getString("email","").toString()
     LaunchedEffect(Unit) {
         delay(2000)
-        val intent = Intent(context, LoginActivity::class.java)
+        val intent = Intent(context, OnboardingActivity::class.java) // Changed from LoginActivity
         context.startActivity(intent)
         activity?.finish()
     }

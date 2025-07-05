@@ -1,21 +1,20 @@
 package com.example.tailstale.viewmodel
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.tailstale.model.PetModel
+import com.example.tailstale.model.PetType
 import com.example.tailstale.model.UserModel
 import com.example.tailstale.repo.AuthRepository
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.example.tailstale.repo.PetRepository
 import com.google.firebase.auth.AuthCredential
-import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.auth.OAuthProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class AuthViewModel(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val petRepository: PetRepository
 ) : ViewModel() {
 
     private val _currentUser = MutableStateFlow<UserModel?>(null)
@@ -29,7 +28,6 @@ class AuthViewModel(
 
     private val _isSignedIn = MutableStateFlow(false)
     val isSignedIn: StateFlow<Boolean> = _isSignedIn
-
 
     init {
         checkCurrentUser()
@@ -152,6 +150,57 @@ class AuthViewModel(
                     _error.value = it.message
                 }
             )
+        }
+    }
+
+    fun signUpWithEmailAndPet(
+        email: String,
+        password: String,
+        displayName: String,
+        petType: PetType?,
+        petName: String?
+    ) {
+        viewModelScope.launch {
+            _loading.value = true
+            authRepository.signUpWithEmail(email, password, displayName).fold(
+                onSuccess = { user ->
+                    _currentUser.value = user
+                    _isSignedIn.value = true
+                    _error.value = null
+
+                    // Create initial pet if provided
+                    if (petType != null && petName != null && petName.isNotBlank()) {
+                        createInitialPet(user.id, petType, petName)
+                    }
+                },
+                onFailure = {
+                    _error.value = it.message
+                    _isSignedIn.value = false
+                }
+            )
+            _loading.value = false
+        }
+    }
+
+    private suspend fun createInitialPet(userId: String, petType: PetType, petName: String) {
+        try {
+            val pet = PetModel(
+                name = petName,
+                type = petType
+            )
+
+            petRepository.createPet(pet).fold(
+                onSuccess = { createdPet ->
+                    // Pet created successfully, it will be automatically linked to user
+                },
+                onFailure = { exception ->
+                    // Log error but don't fail the signup process
+                    _error.value = "Account created but failed to create pet: ${exception.message}"
+                }
+            )
+        } catch (e: Exception) {
+            // Log error but don't fail signup
+            _error.value = "Account created but failed to create pet: ${e.message}"
         }
     }
 

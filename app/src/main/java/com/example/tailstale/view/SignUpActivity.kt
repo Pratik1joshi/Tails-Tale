@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.example.tailstale.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tailstale.di.AppModule
+import com.example.tailstale.model.PetType
 import com.example.tailstale.viewmodel.AuthViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -64,7 +65,18 @@ class SignUpActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignupBody() {
-    var name by remember { mutableStateOf("") }
+    // Get data from onboarding
+    val context = LocalContext.current
+    val activity = context as? ComponentActivity
+    val intent = activity?.intent
+
+    val prefilledName = intent?.getStringExtra("USER_NAME") ?: ""
+    val selectedPetType = intent?.getStringExtra("PET_TYPE")?.let {
+        PetType.valueOf(it)
+    }
+    val selectedPetName = intent?.getStringExtra("PET_NAME") ?: ""
+
+    var name by remember { mutableStateOf(prefilledName) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -73,7 +85,6 @@ fun SignupBody() {
     var terms by remember { mutableStateOf(false) }
     var showTermsDialog by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
@@ -83,9 +94,9 @@ fun SignupBody() {
     val authViewModel: AuthViewModel = viewModel(factory = AppModule.provideViewModelFactory())
 
     // Observe state
-    val loading by authViewModel.loading.collectAsState(initial = false)
-    val error by authViewModel.error.collectAsState(initial = null)
-    val isSignedIn by authViewModel.isSignedIn.collectAsState(initial = false)
+    val loading by authViewModel.loading.collectAsState()
+    val error by authViewModel.error.collectAsState()
+    val isSignedIn by authViewModel.isSignedIn.collectAsState()
 
     // Setup Google Sign In
     val googleSignInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -331,7 +342,15 @@ fun SignupBody() {
                     } else {
                         keyboardController?.hide()
                         focusManager.clearFocus()
-                        authViewModel.signUpWithEmail(email, password, name)
+
+                        // Pass pet data to signup
+                        authViewModel.signUpWithEmailAndPet(
+                            email = email,
+                            password = password,
+                            displayName = name,
+                            petType = selectedPetType,
+                            petName = selectedPetName
+                        )
                     }
                 },
                 modifier = Modifier

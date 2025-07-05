@@ -61,25 +61,30 @@ class AuthRepositoryImpl(
         }
     }
 
+    // In AuthRepositoryImpl.kt
     override suspend fun signInWithGoogle(credential: AuthCredential): Result<UserModel> {
         return try {
             val authResult = auth.signInWithCredential(credential).await()
-            val firebaseUser = authResult.user ?: throw Exception("Google authentication failed")
+            val firebaseUser = authResult.user
 
-            // Check if user already exists in our database
-            val userResult = userRepository.getUserById(firebaseUser.uid)
-            val user = userResult.getOrNull()
+            if (firebaseUser != null) {
+                // Create or get existing user
+                val user = UserModel(
+                    id = firebaseUser.uid,
+                    username = firebaseUser.displayName ?: firebaseUser.email?.substringBefore('@') ?: "",
+                    email = firebaseUser.email ?: "",
+                    displayName = firebaseUser.displayName ?: "",
+                    profileImageUrl = firebaseUser.photoUrl?.toString() ?: ""
+                )
 
-            if (user != null) {
+                // Save user to repository
+                userRepository.createUser(user).getOrThrow()
                 Result.success(user)
             } else {
-                // Create a new user in our database
-                val newUser = createUserModelFromFirebaseUser(firebaseUser)
-                userRepository.createUser(newUser).getOrThrow()
-                Result.success(newUser)
+                Result.failure(Exception("Authentication failed - no user returned"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception("Google sign in failed: ${e.message}"))
         }
     }
 
