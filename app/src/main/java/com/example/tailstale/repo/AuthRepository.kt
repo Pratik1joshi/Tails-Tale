@@ -12,4 +12,5 @@ interface AuthRepository {
     suspend fun resetPassword(email: String): Result<Boolean>
     suspend fun signOut(): Result<Boolean>
     suspend fun getCurrentUser(): Result<UserModel?>
+    suspend fun signUpWithCompleteData(email: String, password: String, displayName: String, petType: String, petName: String): Result<UserModel>
 }

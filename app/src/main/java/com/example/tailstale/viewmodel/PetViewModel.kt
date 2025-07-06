@@ -36,7 +36,7 @@ class PetViewModel(
             _loading.value = true
             val pet = PetModel(
                 name = name,
-                type = petType
+                type = petType.name
             )
 
             petRepository.createPet(pet).fold(
@@ -45,8 +45,11 @@ class PetViewModel(
                     userRepository.getUserById(userId).fold(
                         onSuccess = { user ->
                             user?.let {
-                                it.pets.add(createdPet.id)
-                                userRepository.updateUser(it)
+                                // Create a new user with updated pets list
+                                val updatedUser = it.copy(
+                                    pets = it.pets + createdPet.id
+                                )
+                                userRepository.updateUser(updatedUser)
                             }
                         },
                         onFailure = { }
@@ -86,14 +89,19 @@ class PetViewModel(
     fun feedPet(foodId: String) {
         _currentPet.value?.let { pet ->
             viewModelScope.launch {
-                // Create care action
                 val careAction = CareAction(
                     action = CareActionType.FEED,
                     itemUsed = foodId,
                     effectOnPet = mapOf("hunger" to -20, "happiness" to 5)
                 )
 
-                // Update pet stats
+                val careActionMap: Map<String, Any> = mapOf(
+                    "action" to careAction.action.name,
+                    "itemUsed" to (careAction.itemUsed ?: ""),
+                    "effectOnPet" to careAction.effectOnPet,
+                    "timestamp" to careAction.timestamp
+                )
+
                 val statsUpdate = mapOf(
                     "hunger" to maxOf(0, pet.hunger - 20),
                     "happiness" to minOf(100, pet.happiness + 5),
@@ -106,9 +114,9 @@ class PetViewModel(
                         val updatedPet = pet.copy(
                             hunger = maxOf(0, pet.hunger - 20),
                             happiness = minOf(100, pet.happiness + 5),
-                            lastFed = System.currentTimeMillis()
+                            lastFed = System.currentTimeMillis(),
+                            careLog = pet.careLog + careActionMap
                         )
-                        updatedPet.careLog.add(careAction)
                         _currentPet.value = updatedPet
                         _error.value = null
                     },
@@ -129,6 +137,13 @@ class PetViewModel(
                     effectOnPet = mapOf("happiness" to 15, "energy" to -10)
                 )
 
+                val careActionMap: Map<String, Any> = mapOf(
+                    "action" to careAction.action.name,
+                    "itemUsed" to (careAction.itemUsed ?: ""),
+                    "effectOnPet" to careAction.effectOnPet,
+                    "timestamp" to careAction.timestamp
+                )
+
                 val statsUpdate = mapOf(
                     "happiness" to minOf(100, pet.happiness + 15),
                     "energy" to maxOf(0, pet.energy - 10),
@@ -141,9 +156,9 @@ class PetViewModel(
                         val updatedPet = pet.copy(
                             happiness = minOf(100, pet.happiness + 15),
                             energy = maxOf(0, pet.energy - 10),
-                            lastPlayed = System.currentTimeMillis()
+                            lastPlayed = System.currentTimeMillis(),
+                            careLog = pet.careLog + careActionMap
                         )
-                        updatedPet.careLog.add(careAction)
                         _currentPet.value = updatedPet
                         _error.value = null
                     },
@@ -163,6 +178,12 @@ class PetViewModel(
                     effectOnPet = mapOf("cleanliness" to 25, "happiness" to 5)
                 )
 
+                val careActionMap: Map<String, Any> = mapOf(
+                    "action" to careAction.action.name,
+                    "effectOnPet" to careAction.effectOnPet,
+                    "timestamp" to careAction.timestamp
+                )
+
                 val statsUpdate = mapOf(
                     "cleanliness" to minOf(100, pet.cleanliness + 25),
                     "happiness" to minOf(100, pet.happiness + 5),
@@ -175,9 +196,9 @@ class PetViewModel(
                         val updatedPet = pet.copy(
                             cleanliness = minOf(100, pet.cleanliness + 25),
                             happiness = minOf(100, pet.happiness + 5),
-                            lastCleaned = System.currentTimeMillis()
+                            lastCleaned = System.currentTimeMillis(),
+                            careLog = pet.careLog + careActionMap
                         )
-                        updatedPet.careLog.add(careAction)
                         _currentPet.value = updatedPet
                         _error.value = null
                     },
@@ -192,7 +213,6 @@ class PetViewModel(
     fun vaccinatePet(vaccineId: String) {
         _currentPet.value?.let { pet ->
             viewModelScope.launch {
-                // Here you would get vaccine details and create record
                 val vaccineRecord = VaccineRecord(
                     vaccine = VaccineModel(
                         name = "Sample Vaccine",
@@ -200,14 +220,25 @@ class PetViewModel(
                         targetDisease = "Sample Disease",
                         effectiveDurationDays = 365,
                         cost = 50,
-                        compatiblePetTypes = setOf(pet.type)
+                        compatiblePetTypes = setOf(PetType.valueOf(pet.type))
                     )
+                )
+
+                val vaccineRecordMap: Map<String, Any> = mapOf(
+                    "vaccineName" to vaccineRecord.vaccine.name,
+                    "description" to vaccineRecord.vaccine.description,
+                    "targetDisease" to vaccineRecord.vaccine.targetDisease,
+                    "effectiveDurationDays" to vaccineRecord.vaccine.effectiveDurationDays,
+                    "cost" to vaccineRecord.vaccine.cost,
+                    "dateAdministered" to vaccineRecord.dateAdministered
                 )
 
                 petRepository.addVaccineRecord(pet.id, vaccineRecord).fold(
                     onSuccess = {
-                        pet.vaccineHistory.add(vaccineRecord)
-                        _currentPet.value = pet
+                        val updatedPet = pet.copy(
+                            vaccineHistory = pet.vaccineHistory + vaccineRecordMap
+                        )
+                        _currentPet.value = updatedPet
                         _error.value = null
                     },
                     onFailure = {

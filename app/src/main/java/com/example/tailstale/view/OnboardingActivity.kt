@@ -11,13 +11,11 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -29,9 +27,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tailstale.model.PetType
-import kotlinx.coroutines.delay
-import kotlin.math.sin
-import androidx.compose.animation.ExperimentalAnimationApi
 
 class OnboardingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,7 +48,15 @@ fun OnboardingStoryFlow() {
 
     val context = LocalContext.current
 
-    // Smooth transitions between steps
+    // Handle navigation to login
+    fun navigateToLogin() {
+        val intent = Intent(context, LoginActivity::class.java).apply {
+            putExtra("FROM_ONBOARDING", true)
+        }
+        context.startActivity(intent)
+        (context as? ComponentActivity)?.finish()
+    }
+
     AnimatedContent(
         targetState = currentStep,
         transitionSpec = {
@@ -69,7 +72,10 @@ fun OnboardingStoryFlow() {
         label = "step_transition"
     ) { step ->
         when (step) {
-            0 -> WelcomeStep(onNext = { currentStep = 1 })
+            0 -> WelcomeStep(
+                onNext = { currentStep = 1 },
+                onLogin = { navigateToLogin() }
+            )
             1 -> NameInputStep(
                 userName = userName,
                 onNameChange = { userName = it },
@@ -93,7 +99,6 @@ fun OnboardingStoryFlow() {
                 petName = petName,
                 onPetNameChange = { petName = it },
                 onNext = {
-                    // Navigate to SignUpActivity with data
                     val intent = Intent(context, SignUpActivity::class.java).apply {
                         putExtra("USER_NAME", userName)
                         putExtra("PET_TYPE", selectedPetType?.name)
@@ -108,8 +113,7 @@ fun OnboardingStoryFlow() {
 }
 
 @Composable
-fun WelcomeStep(onNext: () -> Unit) {
-    // Animated background
+fun WelcomeStep(onNext: () -> Unit, onLogin: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "background")
     val animatedFloat by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -121,7 +125,6 @@ fun WelcomeStep(onNext: () -> Unit) {
         label = "float_animation"
     )
 
-    // Floating animation for castle
     val floatingOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 10f,
@@ -132,7 +135,6 @@ fun WelcomeStep(onNext: () -> Unit) {
         label = "floating"
     )
 
-    // Scale animation for entrance
     val scaleAnimation by animateFloatAsState(
         targetValue = 1f,
         animationSpec = spring(
@@ -162,7 +164,6 @@ fun WelcomeStep(onNext: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Animated castle with floating effect
             Text(
                 text = "🏰",
                 fontSize = 120.sp,
@@ -174,7 +175,6 @@ fun WelcomeStep(onNext: () -> Unit) {
                     }
             )
 
-            // Animated sparkles
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.padding(bottom = 24.dp)
@@ -225,22 +225,45 @@ fun WelcomeStep(onNext: () -> Unit) {
                 visible = scaleAnimation > 0.9f,
                 enter = fadeIn() + slideInVertically()
             ) {
-                Button(
-                    onClick = onNext,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF8B5CF6)
-                    )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(
-                        text = "Begin My Adventure ✨",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
+                    Button(
+                        onClick = onNext,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(28.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF8B5CF6)
+                        )
+                    ) {
+                        Text(
+                            text = "Begin My Adventure ✨",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = onLogin,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(28.dp),
+                        border = BorderStroke(2.dp, Color(0xFF8B5CF6)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF8B5CF6)
+                        )
+                    ) {
+                        Text(
+                            text = "I Already Have an Account 🏠",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
@@ -254,26 +277,24 @@ fun NameInputStep(
     onNameChange: (String) -> Unit,
     onNext: () -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "wave")
-    val waveAnimation by infiniteTransition.animateFloat(
+    val animatedFloat by rememberInfiniteTransition(label = "").animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "wave"
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = ""
     )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                brush = Brush.radialGradient(
+                brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFFffeaa7).copy(alpha = 0.3f),
-                        Color(0xFFfdcb6e).copy(alpha = 0.5f),
-                        Color(0xFFe17055).copy(alpha = 0.3f)
+                        Color(0xFF667eea).copy(alpha = 0.3f + animatedFloat * 0.2f),
+                        Color(0xFF764ba2).copy(alpha = 0.5f + animatedFloat * 0.3f),
+                        Color(0xFFf093fb).copy(alpha = 0.4f + animatedFloat * 0.2f)
                     )
                 )
             )
@@ -281,34 +302,23 @@ fun NameInputStep(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Animated waving hand
             Text(
-                text = "👋",
-                fontSize = 80.sp,
-                modifier = Modifier
-                    .padding(bottom = 24.dp)
-                    .graphicsLayer {
-                        rotationZ = sin(waveAnimation * 2 * Math.PI.toFloat()) * 20f
-                    }
-            )
-
-            Text(
-                text = "Hello, Adventurer!",
+                text = "What should we call you?",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1F2937),
+                color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
             Text(
-                text = "Every great journey begins with a name. What should we call you?",
-                fontSize = 18.sp,
-                color = Color(0xFF6B7280),
+                text = "Don't worry, you can change this later!",
+                fontSize = 16.sp,
+                color = Color.White.copy(alpha = 0.8f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 32.dp)
             )
@@ -316,35 +326,35 @@ fun NameInputStep(
             OutlinedTextField(
                 value = userName,
                 onValueChange = onNameChange,
-                label = { Text("Your Name") },
-                placeholder = { Text("Enter your magical name") },
+                placeholder = { Text("Enter your name", color = Color.Gray) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 32.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.White.copy(alpha = 0.9f),
-                    unfocusedContainerColor = Color.White.copy(alpha = 0.7f),
-                    focusedBorderColor = Color(0xFF8B5CF6),
-                    focusedLabelColor = Color(0xFF8B5CF6)
+                    .padding(bottom = 24.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.9f),
+                    focusedIndicatorColor = Color(0xFF667eea),
+                    unfocusedIndicatorColor = Color.Gray
                 ),
+                shape = RoundedCornerShape(12.dp),
                 singleLine = true
             )
 
             Button(
                 onClick = onNext,
+                enabled = userName.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = userName.isNotBlank(),
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF10B981)
+                    containerColor = Color(0xFF667eea),
+                    disabledContainerColor = Color.Gray.copy(alpha = 0.3f)
                 )
             ) {
                 Text(
-                    text = "Continue the Magic! ✨",
-                    fontSize = 16.sp,
+                    text = "Continue",
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White
                 )
@@ -355,17 +365,14 @@ fun NameInputStep(
 
 @Composable
 fun PetLoveStep(userName: String, onNext: () -> Unit) {
-    val infiniteTransition = rememberInfiniteTransition(label = "hearts")
-
-    // Multiple floating hearts
-    val heartOffsets = remember {
-        List(5) { index ->
-            Pair(
-                (-50..50).random().dp,
-                (index * 100).dp
-            )
-        }
-    }
+    val animatedFloat by rememberInfiniteTransition(label = "").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = ""
+    )
 
     Box(
         modifier = Modifier
@@ -373,80 +380,44 @@ fun PetLoveStep(userName: String, onNext: () -> Unit) {
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFFfd79a8).copy(alpha = 0.3f),
-                        Color(0xFFfdcb6e).copy(alpha = 0.4f),
-                        Color(0xFFe84393).copy(alpha = 0.3f)
+                        Color(0xFF667eea).copy(alpha = 0.3f + animatedFloat * 0.2f),
+                        Color(0xFF764ba2).copy(alpha = 0.5f + animatedFloat * 0.3f),
+                        Color(0xFFf093fb).copy(alpha = 0.4f + animatedFloat * 0.2f)
                     )
                 )
             )
     ) {
-        // Floating hearts background
-        heartOffsets.forEachIndexed { index, (x, y) ->
-            val floatingY by infiniteTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = -20f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(2000 + index * 300, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "heart_$index"
-            )
-
-            Text(
-                text = "💕",
-                fontSize = 24.sp,
-                modifier = Modifier
-                    .offset(x = x, y = y)
-                    .graphicsLayer {
-                        translationY = floatingY
-                        alpha = 0.6f
-                    }
-            )
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Bouncing paw
-            val bounceAnimation by infiniteTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 15f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(800, easing = FastOutSlowInEasing),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "bounce"
-            )
-
             Text(
-                text = "🐾",
-                fontSize = 80.sp,
-                modifier = Modifier
-                    .padding(bottom = 24.dp)
-                    .graphicsLayer {
-                        translationY = bounceAnimation
-                    }
-            )
-
-            Text(
-                text = "Hey $userName!",
-                fontSize = 28.sp,
+                text = "Hi $userName! 👋",
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1F2937),
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+
+            Text(
+                text = "Do you love pets?",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
             Text(
-                text = "I have a feeling you're someone who loves adorable companions... Am I right?",
-                fontSize = 18.sp,
-                color = Color(0xFF6B7280),
+                text = "We're about to help you find your perfect virtual companion!",
+                fontSize = 16.sp,
+                color = Color.White.copy(alpha = 0.9f),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 48.dp)
+                modifier = Modifier.padding(bottom = 40.dp)
             )
 
             Button(
@@ -454,14 +425,14 @@ fun PetLoveStep(userName: String, onNext: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFe84393)
+                    containerColor = Color(0xFF667eea)
                 )
             ) {
                 Text(
-                    text = "Yes, I Love Pets! 💕",
-                    fontSize = 16.sp,
+                    text = "Yes, I love pets! 🐾",
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White
                 )
@@ -477,12 +448,13 @@ fun PetSelectionStep(
     onPetTypeSelected: (PetType) -> Unit,
     onNext: () -> Unit
 ) {
-    val petOptions = listOf(
-        PetType.DOG to "🐕",
-        PetType.CAT to "🐱",
-        PetType.RABBIT to "🐰",
-        PetType.BIRD to "🐦",
-        PetType.HAMSTER to "🐹"
+    val animatedFloat by rememberInfiniteTransition(label = "").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = ""
     )
 
     Box(
@@ -491,9 +463,9 @@ fun PetSelectionStep(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF74b9ff).copy(alpha = 0.3f),
-                        Color(0xFF0984e3).copy(alpha = 0.4f),
-                        Color(0xFF6c5ce7).copy(alpha = 0.3f)
+                        Color(0xFF667eea).copy(alpha = 0.3f + animatedFloat * 0.2f),
+                        Color(0xFF764ba2).copy(alpha = 0.5f + animatedFloat * 0.3f),
+                        Color(0xFFf093fb).copy(alpha = 0.4f + animatedFloat * 0.2f)
                     )
                 )
             )
@@ -501,23 +473,15 @@ fun PetSelectionStep(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Perfect, $userName!",
-                fontSize = 28.sp,
+                text = "Choose your pet type, $userName!",
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1F2937),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            Text(
-                text = "Which of these adorable companions speaks to your heart?",
-                fontSize = 18.sp,
-                color = Color(0xFF6B7280),
+                color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 32.dp)
             )
@@ -526,82 +490,34 @@ fun PetSelectionStep(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.padding(bottom = 32.dp)
             ) {
-                items(petOptions) { (petType, emoji) ->
+                items(PetType.values()) { petType ->
                     PetSelectionCard(
                         petType = petType,
-                        emoji = emoji,
                         isSelected = selectedPetType == petType,
-                        onClick = { onPetTypeSelected(petType) }
+                        onSelected = { onPetTypeSelected(petType) }
                     )
                 }
             }
 
-            AnimatedVisibility(
-                visible = selectedPetType != null,
-                enter = fadeIn() + slideInVertically()
+            Button(
+                onClick = onNext,
+                enabled = selectedPetType != null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF667eea),
+                    disabledContainerColor = Color.Gray.copy(alpha = 0.3f)
+                )
             ) {
-                Button(
-                    onClick = onNext,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF6c5ce7)
-                    )
-                ) {
-                    Text(
-                        text = "This One's Perfect! 💖",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                }
+                Text(
+                    text = "Continue",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
             }
-        }
-    }
-}
-
-@Composable
-fun PetSelectionCard(
-    petType: PetType,
-    emoji: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.1f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "scale"
-    )
-
-    Card(
-        modifier = Modifier
-            .size(100.dp)
-            .scale(scale)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected)
-                Color(0xFF6c5ce7).copy(alpha = 0.3f)
-            else Color.White.copy(alpha = 0.8f)
-        ),
-        border = BorderStroke(
-            3.dp,
-            if (isSelected) Color(0xFF6c5ce7) else Color.Transparent
-        )
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = emoji,
-                fontSize = 40.sp
-            )
         }
     }
 }
@@ -612,112 +528,78 @@ fun PetReactionStep(
     selectedPetType: PetType,
     onNext: () -> Unit
 ) {
-    val petEmoji = when(selectedPetType) {
-        PetType.DOG -> "🐕"
-        PetType.CAT -> "🐱"
-        PetType.RABBIT -> "🐰"
-        PetType.BIRD -> "🐦"
-        PetType.HAMSTER -> "🐹"
-    }
-
-    val petName = selectedPetType.name.lowercase().replaceFirstChar { it.uppercase() }
-
-    // Celebration animation
-    val infiniteTransition = rememberInfiniteTransition(label = "celebration")
-    val celebration by infiniteTransition.animateFloat(
+    val animatedFloat by rememberInfiniteTransition(label = "").animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = LinearEasing),
+            animation = tween(2000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
-        ),
-        label = "celebration"
+        ), label = ""
     )
-
-    LaunchedEffect(Unit) {
-        delay(3000)
-        onNext()
-    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                brush = Brush.radialGradient(
+                brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF00b894).copy(alpha = 0.4f),
-                        Color(0xFF00cec9).copy(alpha = 0.5f),
-                        Color(0xFF74b9ff).copy(alpha = 0.3f)
+                        Color(0xFF667eea).copy(alpha = 0.3f + animatedFloat * 0.2f),
+                        Color(0xFF764ba2).copy(alpha = 0.5f + animatedFloat * 0.3f),
+                        Color(0xFFf093fb).copy(alpha = 0.4f + animatedFloat * 0.2f)
                     )
                 )
             )
     ) {
-        // Celebration particles
-        repeat(10) { index ->
-            val particleOffset by infiniteTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 360f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(2000 + index * 100, easing = LinearEasing),
-                    repeatMode = RepeatMode.Restart
-                ),
-                label = "particle_$index"
-            )
-
-            Text(
-                text = "🎉",
-                fontSize = 20.sp,
-                modifier = Modifier
-                    .offset(
-                        x = (50 + index * 30).dp,
-                        y = (100 + index * 50).dp
-                    )
-                    .graphicsLayer {
-                        rotationZ = particleOffset
-                        alpha = 0.8f
-                    }
-            )
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = petEmoji,
-                fontSize = 120.sp,
-                modifier = Modifier
-                    .padding(bottom = 24.dp)
-                    .scale(1f + celebration * 0.1f)
-            )
-
-            Text(
-                text = "Awesome Choice!",
+                text = "Great choice!",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF00b894),
+                color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
             Text(
-                text = "So you love ${petName}s! 🎉",
-                fontSize = 24.sp,
+                text = "You chose a ${selectedPetType.name.lowercase()}! 🎉",
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF1F2937),
+                color = Color.White,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 32.dp)
             )
 
             Text(
-                text = "They're absolutely wonderful companions!",
-                fontSize = 18.sp,
-                color = Color(0xFF6B7280),
-                textAlign = TextAlign.Center
+                text = "Now let's give your new friend a name!",
+                fontSize = 16.sp,
+                color = Color.White.copy(alpha = 0.9f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 40.dp)
             )
+
+            Button(
+                onClick = onNext,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF667eea)
+                )
+            ) {
+                Text(
+                    text = "Let's name it!",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+            }
         }
     }
 }
@@ -731,24 +613,16 @@ fun PetNamingStep(
     onPetNameChange: (String) -> Unit,
     onNext: () -> Unit
 ) {
-    val petEmoji = when(selectedPetType) {
-        PetType.DOG -> "🐕"
-        PetType.CAT -> "🐱"
-        PetType.RABBIT -> "🐰"
-        PetType.BIRD -> "🐦"
-        PetType.HAMSTER -> "🐹"
-    }
-
-    val infiniteTransition = rememberInfiniteTransition(label = "final")
-    val finalGlow by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.2f,
+    val animatedFloat by rememberInfiniteTransition(label = "").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
+            animation = tween(2000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow"
+        ), label = ""
     )
+
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -756,9 +630,9 @@ fun PetNamingStep(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFFa29bfe).copy(alpha = 0.3f),
-                        Color(0xFF6c5ce7).copy(alpha = 0.4f),
-                        Color(0xFFfd79a8).copy(alpha = 0.3f)
+                        Color(0xFF667eea).copy(alpha = 0.3f + animatedFloat * 0.2f),
+                        Color(0xFF764ba2).copy(alpha = 0.5f + animatedFloat * 0.3f),
+                        Color(0xFFf093fb).copy(alpha = 0.4f + animatedFloat * 0.2f)
                     )
                 )
             )
@@ -766,31 +640,15 @@ fun PetNamingStep(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = petEmoji,
-                fontSize = 80.sp,
-                modifier = Modifier
-                    .padding(bottom = 24.dp)
-                    .scale(finalGlow)
-            )
-
-            Text(
-                text = "One Last Thing...",
-                fontSize = 28.sp,
+                text = "What's your ${selectedPetType.name.lowercase()}'s name?",
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1F2937),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            Text(
-                text = "Every special companion needs a special name. What would you like to call your new friend?",
-                fontSize = 18.sp,
-                color = Color(0xFF6B7280),
+                color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 32.dp)
             )
@@ -798,44 +656,95 @@ fun PetNamingStep(
             OutlinedTextField(
                 value = petName,
                 onValueChange = onPetNameChange,
-                label = { Text("Pet Name") },
-                placeholder = { Text("Choose a wonderful name") },
+                placeholder = { Text("Enter pet name", color = Color.Gray) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 32.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.White.copy(alpha = 0.9f),
-                    unfocusedContainerColor = Color.White.copy(alpha = 0.7f),
-                    focusedBorderColor = Color(0xFF6c5ce7),
-                    focusedLabelColor = Color(0xFF6c5ce7)
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.9f),
+                    focusedIndicatorColor = Color(0xFF667eea),
+                    unfocusedIndicatorColor = Color.Gray
                 ),
+                shape = RoundedCornerShape(12.dp),
                 singleLine = true
             )
 
-            AnimatedVisibility(
-                visible = petName.isNotBlank(),
-                enter = fadeIn() + slideInVertically()
+            Button(
+                onClick = onNext,
+                enabled = petName.isNotBlank(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF667eea),
+                    disabledContainerColor = Color.Gray.copy(alpha = 0.3f)
+                )
             ) {
-                Button(
-                    onClick = onNext,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF6c5ce7)
-                    )
-                ) {
-                    Text(
-                        text = "Start Our Adventure Together! 🚀",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                }
+                Text(
+                    text = "Complete Setup",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
             }
         }
+    }
+}
+
+@Composable
+fun PetSelectionCard(
+    petType: PetType,
+    isSelected: Boolean,
+    onSelected: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.1f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = ""
+    )
+
+    Card(
+        modifier = Modifier
+            .size(120.dp)
+            .scale(scale)
+            .clickable { onSelected() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) Color(0xFF667eea) else Color.White.copy(alpha = 0.9f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = getPetEmoji(petType),
+                fontSize = 48.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Text(
+                text = petType.name,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (isSelected) Color.White else Color.Black,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+fun getPetEmoji(petType: PetType): String {
+    return when (petType) {
+        PetType.DOG -> "🐕"
+        PetType.CAT -> "🐱"
+        PetType.BIRD -> "🐦"
+        PetType.RABBIT -> "🐰"
+        PetType.HAMSTER -> "🐹"
     }
 }
 

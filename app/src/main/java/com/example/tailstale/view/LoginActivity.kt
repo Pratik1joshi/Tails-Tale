@@ -73,6 +73,9 @@ fun LoginBody() {
     var resetEmail by remember { mutableStateOf("") }
 
     val context = LocalContext.current
+    val activity = context as? ComponentActivity
+    val fromOnboarding = activity?.intent?.getBooleanExtra("FROM_ONBOARDING", false) ?: false
+
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
@@ -351,8 +354,13 @@ fun LoginBody() {
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.clickable {
-                        val intent = Intent(context, SignUpActivity::class.java)
+                        // Navigate to onboarding instead of direct signup
+                        val intent = Intent(context, OnboardingActivity::class.java)
                         context.startActivity(intent)
+                        if (fromOnboarding) {
+                            // Don't finish if we came from onboarding, just replace
+                            activity?.finish()
+                        }
                     }
                 )
             }

@@ -148,7 +148,7 @@ fun SignupBody() {
                 .padding(innerPadding)
                 .verticalScroll(scrollState)
                 .padding(16.dp)
-                .imePadding(), // This handles keyboard padding
+                .imePadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Logo Section
@@ -343,12 +343,12 @@ fun SignupBody() {
                         keyboardController?.hide()
                         focusManager.clearFocus()
 
-                        // Pass pet data to signup
-                        authViewModel.signUpWithEmailAndPet(
+                        // Pass onboarding data to signup
+                        authViewModel.signUpWithCompleteData(
                             email = email,
                             password = password,
                             displayName = name,
-                            petType = selectedPetType,
+                            petType = selectedPetType?.name ?: "",
                             petName = selectedPetName
                         )
                     }
@@ -378,9 +378,18 @@ fun SignupBody() {
                 modifier = Modifier
                     .padding(vertical = 8.dp)
                     .clickable {
-                        val intent = Intent(context, LoginActivity::class.java)
-                        context.startActivity(intent)
-                        (context as? ComponentActivity)?.finish()
+                        if (prefilledName.isNotEmpty() || selectedPetType != null) {
+                            // Coming from onboarding, go to login with flag
+                            val loginIntent = Intent(context, LoginActivity::class.java).apply {
+                                putExtra("FROM_ONBOARDING", true)
+                            }
+                            context.startActivity(loginIntent)
+                        } else {
+                            // Regular signup flow
+                            val loginIntent = Intent(context, LoginActivity::class.java)
+                            context.startActivity(loginIntent)
+                        }
+                        activity?.finish()
                     },
                 color = MaterialTheme.colorScheme.primary
             )

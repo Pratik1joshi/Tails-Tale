@@ -6,7 +6,9 @@ import com.example.tailstale.model.PetModel
 import com.example.tailstale.model.PetType
 import com.example.tailstale.model.UserModel
 import com.example.tailstale.repo.AuthRepository
+import com.example.tailstale.repo.AuthRepositoryImpl
 import com.example.tailstale.repo.PetRepository
+import com.example.tailstale.repo.UserRepository
 import com.google.firebase.auth.AuthCredential
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -153,25 +155,71 @@ class AuthViewModel(
         }
     }
 
-    fun signUpWithEmailAndPet(
+//    fun signUpWithEmailAndPet(
+//        email: String,
+//        password: String,
+//        displayName: String,
+//        petType: PetType?,
+//        petName: String?
+//    ) {
+//        viewModelScope.launch {
+//            _loading.value = true
+//            authRepository.signUpWithEmail(email, password, displayName).fold(
+//                onSuccess = { user ->
+//                    _currentUser.value = user
+//                    _isSignedIn.value = true
+//                    _error.value = null
+//
+//                    // Create initial pet if provided
+//                    if (petType != null && petName != null && petName.isNotBlank()) {
+//                        createInitialPet(user.id, petType, petName)
+//                    }
+//                },
+//                onFailure = {
+//                    _error.value = it.message
+//                    _isSignedIn.value = false
+//                }
+//            )
+//            _loading.value = false
+//        }
+//    }
+//
+//    private suspend fun createInitialPet(userId: String, petType: PetType, petName: String) {
+//        try {
+//            val pet = PetModel(
+//                name = petName,
+//                type = petType
+//            )
+//
+//            petRepository.createPet(pet).fold(
+//                onSuccess = { createdPet ->
+//                    // Pet created successfully, it will be automatically linked to user
+//                },
+//                onFailure = { exception ->
+//                    // Log error but don't fail the signup process
+//                    _error.value = "Account created but failed to create pet: ${exception.message}"
+//                }
+//            )
+//        } catch (e: Exception) {
+//            // Log error but don't fail signup
+//            _error.value = "Account created but failed to create pet: ${e.message}"
+//        }
+//    }
+
+    fun signUpWithCompleteData(
         email: String,
         password: String,
         displayName: String,
-        petType: PetType?,
-        petName: String?
+        petType: String,
+        petName: String
     ) {
         viewModelScope.launch {
             _loading.value = true
-            authRepository.signUpWithEmail(email, password, displayName).fold(
-                onSuccess = { user ->
-                    _currentUser.value = user
+            authRepository.signUpWithCompleteData(email, password, displayName, petType, petName).fold(
+                onSuccess = {
+                    _currentUser.value = it
                     _isSignedIn.value = true
                     _error.value = null
-
-                    // Create initial pet if provided
-                    if (petType != null && petName != null && petName.isNotBlank()) {
-                        createInitialPet(user.id, petType, petName)
-                    }
                 },
                 onFailure = {
                     _error.value = it.message
@@ -179,28 +227,6 @@ class AuthViewModel(
                 }
             )
             _loading.value = false
-        }
-    }
-
-    private suspend fun createInitialPet(userId: String, petType: PetType, petName: String) {
-        try {
-            val pet = PetModel(
-                name = petName,
-                type = petType
-            )
-
-            petRepository.createPet(pet).fold(
-                onSuccess = { createdPet ->
-                    // Pet created successfully, it will be automatically linked to user
-                },
-                onFailure = { exception ->
-                    // Log error but don't fail the signup process
-                    _error.value = "Account created but failed to create pet: ${exception.message}"
-                }
-            )
-        } catch (e: Exception) {
-            // Log error but don't fail signup
-            _error.value = "Account created but failed to create pet: ${e.message}"
         }
     }
 

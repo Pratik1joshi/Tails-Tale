@@ -9,20 +9,19 @@ enum class GrowthStage { BABY, YOUNG, ADULT, SENIOR }
 data class PetModel(
     val id: String = UUID.randomUUID().toString(),
     var name: String = "",
-    var type: PetType = PetType.DOG,
+    var type: String = PetType.DOG.name, // Store as String instead of enum
     var age: Int = 0,
     var happiness: Int = 100,
     var health: Int = 100,
     var hunger: Int = 0,
     var energy: Int = 100,
     var weight: Double = 1.0,
-    var cleanliness: Int = 100, // Added for hygiene tracking
+    var cleanliness: Int = 100,
     var lastFed: Long = System.currentTimeMillis(),
     var lastPlayed: Long = System.currentTimeMillis(),
     var lastCleaned: Long = System.currentTimeMillis(),
-    var activeDisease: DiseaseModel? = null,
-    val vaccineHistory: MutableList<VaccineRecord> = mutableListOf(),
-    val careLog: MutableList<CareAction> = mutableListOf(), // Track care actions
+    val vaccineHistory: List<Map<String, Any>> = emptyList(), // Simple list of maps
+    val careLog: List<Map<String, Any>> = emptyList(), // Simple list of maps
     var creationDate: Long = System.currentTimeMillis()
 ) {
     val growthStage: GrowthStage

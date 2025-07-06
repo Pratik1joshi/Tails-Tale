@@ -3,15 +3,17 @@ package com.example.tailstale.repo
 import com.example.tailstale.model.Achievement
 import com.example.tailstale.model.LearningProgress
 import com.example.tailstale.model.UserModel
-
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.getValue
+import kotlinx.coroutines.tasks.await
 
 class UserRepositoryImpl : UserRepository {
-    // In a real app, this would connect to your database (Room, Firebase, etc.)
-    private val users = mutableMapOf<String, UserModel>()
+    private val database: DatabaseReference = FirebaseDatabase.getInstance().reference.child("users")
 
     override suspend fun createUser(user: UserModel): Result<UserModel> {
         return try {
-            users[user.id] = user
+            database.child(user.id).setValue(user).await()
             Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
@@ -20,7 +22,9 @@ class UserRepositoryImpl : UserRepository {
 
     override suspend fun getUserById(userId: String): Result<UserModel?> {
         return try {
-            Result.success(users[userId])
+            val snapshot = database.child(userId).get().await()
+            val user = snapshot.getValue<UserModel>()
+            Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -28,7 +32,9 @@ class UserRepositoryImpl : UserRepository {
 
     override suspend fun getUserByEmail(email: String): Result<UserModel?> {
         return try {
-            val user = users.values.find { it.email == email }
+            val query = database.orderByChild("email").equalTo(email)
+            val snapshot = query.get().await()
+            val user = snapshot.children.firstOrNull()?.getValue<UserModel>()
             Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
@@ -37,7 +43,7 @@ class UserRepositoryImpl : UserRepository {
 
     override suspend fun updateUser(user: UserModel): Result<UserModel> {
         return try {
-            users[user.id] = user
+            database.child(user.id).setValue(user).await()
             Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
@@ -46,7 +52,7 @@ class UserRepositoryImpl : UserRepository {
 
     override suspend fun deleteUser(userId: String): Result<Boolean> {
         return try {
-            users.remove(userId)
+            database.child(userId).removeValue().await()
             Result.success(true)
         } catch (e: Exception) {
             Result.failure(e)
@@ -55,10 +61,8 @@ class UserRepositoryImpl : UserRepository {
 
     override suspend fun updateCoins(userId: String, coins: Int): Result<Boolean> {
         return try {
-            users[userId]?.let { user ->
-                users[userId] = user.copy(coins = coins)
-                Result.success(true)
-            } ?: Result.success(false)
+            database.child(userId).child("coins").setValue(coins).await()
+            Result.success(true)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -66,10 +70,8 @@ class UserRepositoryImpl : UserRepository {
 
     override suspend fun updateGems(userId: String, gems: Int): Result<Boolean> {
         return try {
-            users[userId]?.let { user ->
-                users[userId] = user.copy(gems = gems)
-                Result.success(true)
-            } ?: Result.success(false)
+            database.child(userId).child("gems").setValue(gems).await()
+            Result.success(true)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -77,11 +79,13 @@ class UserRepositoryImpl : UserRepository {
 
     override suspend fun updateExperience(userId: String, experience: Int): Result<Boolean> {
         return try {
-            users[userId]?.let { user ->
-                val newLevel = calculateLevel(experience)
-                users[userId] = user.copy(experience = experience, level = newLevel)
-                Result.success(true)
-            } ?: Result.success(false)
+            val newLevel = calculateLevel(experience)
+            val updates = mapOf(
+                "experience" to experience,
+                "level" to newLevel
+            )
+            database.child(userId).updateChildren(updates).await()
+            Result.success(true)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -89,10 +93,13 @@ class UserRepositoryImpl : UserRepository {
 
     override suspend fun addAchievement(userId: String, achievement: Achievement): Result<Boolean> {
         return try {
-            users[userId]?.let { user ->
-                user.achievements.add(achievement.copy(isUnlocked = true, dateUnlocked = System.currentTimeMillis()))
-                Result.success(true)
-            } ?: Result.success(false)
+            val achievementRef = database.child(userId).child("achievements").push()
+            val updatedAchievement = achievement.copy(
+                isUnlocked = true,
+                dateUnlocked = System.currentTimeMillis()
+            )
+            achievementRef.setValue(updatedAchievement).await()
+            Result.success(true)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -100,16 +107,14 @@ class UserRepositoryImpl : UserRepository {
 
     override suspend fun updateLearningProgress(userId: String, progress: LearningProgress): Result<Boolean> {
         return try {
-            users[userId]?.let { user ->
-                users[userId] = user.copy(learningProgress = progress)
-                Result.success(true)
-            } ?: Result.success(false)
+            database.child(userId).child("learningProgress").setValue(progress).await()
+            Result.success(true)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
     private fun calculateLevel(experience: Int): Int {
-        return (experience / 100) + 1 // Simple level calculation
+        return (experience / 100) + 1
     }
 }

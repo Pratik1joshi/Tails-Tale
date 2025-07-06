@@ -1,11 +1,15 @@
 package com.example.tailstale.repo
 
 import com.example.tailstale.model.Inventory
+import com.example.tailstale.model.PetModel
+import com.example.tailstale.model.PetType
+//import com.example.tailstale.model.PetType
 import com.example.tailstale.model.UserModel
 import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.userProfileChangeRequest
+import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.tasks.await
 
 class AuthRepositoryImpl(
@@ -46,14 +50,22 @@ class AuthRepositoryImpl(
             }
             firebaseUser.updateProfile(profileUpdates).await()
 
-            // Create user in our database
+            // Create user in our database with complete data
             val newUser = UserModel(
                 id = firebaseUser.uid,
-                username = email.substringBefore('@'),
+                username = displayName,
                 email = email,
-                displayName = displayName
+                displayName = displayName,
+                profileImageUrl = "",
+                coins = 100,
+                gems = 5,
+                level = 1,
+                experience = 0,
+                lastLoginDate = System.currentTimeMillis(),
+                creationDate = System.currentTimeMillis()
             )
 
+            // Save to Firebase Realtime Database
             userRepository.createUser(newUser).getOrThrow()
             Result.success(newUser)
         } catch (e: Exception) {
@@ -134,6 +146,64 @@ class AuthRepositoryImpl(
             userRepository.getUserById(firebaseUser.uid)
         } else {
             Result.success(null)
+        }
+    }
+
+    override suspend fun signUpWithCompleteData(
+        email: String,
+        password: String,
+        displayName: String,
+        petType: String,
+        petName: String
+    ): Result<UserModel> {
+        return try {
+            val authResult = auth.createUserWithEmailAndPassword(email, password).await()
+            val firebaseUser = authResult.user ?: throw Exception("User creation failed")
+
+            // Update display name in Firebase Auth
+            val profileUpdates = userProfileChangeRequest {
+                this.displayName = displayName
+            }
+            firebaseUser.updateProfile(profileUpdates).await()
+
+            // Create the actual pet model
+            val petModel = PetModel(
+                name = petName,
+                type = petType
+            )
+
+            // Save pet to Firebase
+            val petRepository = PetRepositoryImpl()
+            petRepository.createPet(petModel).getOrThrow()
+
+            // Only call linkPetToUser if it exists in your PetRepositoryImpl
+            // petRepository.linkPetToUser(firebaseUser.uid, petModel.id).getOrThrow()
+
+            // Create complete user data with simple types only
+            val newUser = UserModel(
+                id = firebaseUser.uid,
+                username = displayName,
+                email = email,
+                displayName = displayName,
+                profileImageUrl = "",
+                coins = 100,
+                gems = 5,
+                level = 1,
+                experience = 0,
+                lastLoginDate = System.currentTimeMillis(),
+                creationDate = System.currentTimeMillis(),
+                pets = listOf(petModel.id),
+                achievements = emptyList(),
+                inventory = emptyMap(),
+                learningProgress = emptyMap()
+            )
+
+            // Save user to Firebase Realtime Database
+            userRepository.createUser(newUser).getOrThrow()
+
+            Result.success(newUser)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
