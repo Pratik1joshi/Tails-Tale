@@ -1,5 +1,7 @@
 package com.example.tailstale.view
 
+import android.R
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -51,8 +53,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.tailstale.R
 import kotlinx.coroutines.CoroutineScope
+import kotlin.jvm.java
+
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,7 +95,7 @@ fun LoginBody(){
 
 
             Image(
-                painter = painterResource(R.drawable.logo),
+                painter = painterResource(com.example.tailstale.R.drawable.logo),
                 contentDescription = null,
                 modifier = Modifier
                     .height(250.dp)
@@ -134,8 +137,8 @@ fun LoginBody(){
                 suffix = {
                     Icon(
                         painter = painterResource(
-                            if (!passwordVisibility) R.drawable.baseline_visibility_off_24
-                            else R.drawable.baseline_visibility_24
+                            if (!passwordVisibility) com.example.tailstale.R.drawable.baseline_visibility_off_24
+                            else com.example.tailstale.R.drawable.baseline_visibility_off_24
                         ), contentDescription = null,
                         modifier = Modifier.clickable {
                             passwordVisibility = !passwordVisibility
@@ -192,7 +195,11 @@ fun LoginBody(){
             ) {
                 Text("Login")
             }
-            Text("Don't have an account? Signup Now", modifier = Modifier.padding(vertical = 10.dp))
+            Text("Don't have an account? Signup Now", modifier = Modifier
+                .padding(vertical = 10.dp)
+                .clickable {
+                    context.startActivity(Intent(context, SignUpActivity::class.java))
+                })
             Row(
                 modifier = Modifier
                     .padding(horizontal = 10.dp, vertical = 5.dp)
@@ -224,7 +231,7 @@ fun LoginBody(){
                         .fillMaxWidth()
                 )
                 Image(
-                    painter = painterResource(R.drawable.google),
+                    painter = painterResource(com.example.tailstale.R.drawable.google),
                     contentDescription = null, modifier = Modifier
                         .height(50.dp)
                         .width(50.dp)
