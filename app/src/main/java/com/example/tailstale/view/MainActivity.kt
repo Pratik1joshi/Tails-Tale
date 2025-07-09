@@ -50,9 +50,9 @@ fun VirtualPetApp() {
     val tabs = listOf("Home", "Stats", "Add", "Activities", "Profile")
     val tabIcons = listOf(
         Icons.Default.Home,
-        Icons.Default.baseline_bar_chart_24,
+        Icons.Default.Settings,//baseline_bar_chart_24
         Icons.Default.Add,
-        Icons.Default.baseline_directions_run_24,
+        Icons.Default.Star,//baseline_directions_run_24
         Icons.Default.Person
     )
 
@@ -217,7 +217,7 @@ fun HomeScreen() {
             ) {
                 // Walking icon
                 OverlayIcon(
-                    icon = Icons.Default.baseline_directions_walk_24,
+                    icon = Icons.Default.AccountCircle,//baseline_directions_walk_24
                     onClick = {
                         // Handle walking action
                         happiness = minOf(100, happiness + 10)
@@ -227,7 +227,7 @@ fun HomeScreen() {
 
                 // Feeding icon
                 OverlayIcon(
-                    icon = Icons.Default.baseline_restaurant_24,
+                    icon = Icons.Default.Home,//baseline_restaurant_24
                     onClick = {
                         // Handle feeding action
                         hunger = minOf(100, hunger + 20)
@@ -237,7 +237,7 @@ fun HomeScreen() {
 
                 // Play icon
                 OverlayIcon(
-                    icon = Icons.Default.baseline_sports_basketball_24,
+                    icon = Icons.Default.Build,//baseline_sports_basketball_24
                     onClick = {
                         // Handle play action
                         happiness = minOf(100, happiness + 15)
@@ -247,7 +247,7 @@ fun HomeScreen() {
 
                 // Medical icon
                 OverlayIcon(
-                    icon = Icons.Default.outline_local_hospital_24,
+                    icon = Icons.Default.ArrowDropDown,//outline_local_hospital_24
                     onClick = {
                         // Handle medical action
                         health = minOf(100, health + 20)
@@ -398,7 +398,7 @@ fun StatsScreen() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                Icons.Default.baseline_bar_chart_24,
+                Icons.Default.Star,//baseline_bar_chart_24
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
                 tint = Color.Gray
@@ -466,7 +466,7 @@ fun ActivitiesScreen() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                Icons.Default.baseline_directions_run_24,
+                Icons.Default.Build,//baseline_directions_run_24
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
                 tint = Color.Gray
