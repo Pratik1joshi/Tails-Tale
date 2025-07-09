@@ -223,8 +223,8 @@ fun HomeScreen() {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Walking icon
-                OverlayIcon(
-                    icon = Icons.Default.AccountCircle,//baseline_directions_walk_24
+                OverlayIconPainter(
+                    painter = painterResource(id = R.drawable.baseline_directions_walk_24),
                     onClick = {
                         // Handle walking action
                         happiness = minOf(100, happiness + 10)
@@ -247,22 +247,19 @@ fun HomeScreen() {
                 )
 
 
-
-
-
                 // Play icon
-                OverlayIcon(
-                    icon = Icons.Default.Build,//baseline_sports_basketball_24
+                OverlayIconPainter(
+                    painter = painterResource(id = R.drawable.baseline_sports_basketball_24),
                     onClick = {
                         // Handle play action
-                        happiness = minOf(100, happiness + 15)
+                        happiness = minOf(100, happiness + 5)
                         hunger = maxOf(0, hunger - 3)
                     }
                 )
 
                 // Medical icon
-                OverlayIcon(
-                    icon = Icons.Default.ArrowDropDown,//outline_local_hospital_24
+                OverlayIconPainter(
+                    painter = painterResource(id = R.drawable.outline_local_hospital_24),
                     onClick = {
                         // Handle medical action
                         health = minOf(100, health + 20)
@@ -299,6 +296,7 @@ fun HomeScreen() {
         }
     }
 }
+// this is the overlay icon with a painter resource
 @Composable
 fun OverlayIconPainter(
     painter: Painter,
