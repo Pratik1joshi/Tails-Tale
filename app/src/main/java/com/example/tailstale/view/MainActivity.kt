@@ -30,6 +30,8 @@ import android.net.Uri
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 
 class MainActivity : ComponentActivity() {
@@ -144,6 +146,11 @@ fun HomeScreen() {
     var hunger by remember { mutableStateOf(40) }
     var happiness by remember { mutableStateOf(70) }
 
+    val cooldownMillis = 90_000L
+    var lastClickTime by remember { mutableStateOf(0L) }
+    val currentTime = System.currentTimeMillis()
+    val isClickable = currentTime - lastClickTime > cooldownMillis
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -225,15 +232,23 @@ fun HomeScreen() {
                     }
                 )
 
-                // Feeding icon
-                OverlayIcon(
-                    icon = Icons.Default.Home,//baseline_restaurant_24
+                //Feeding icon
+                OverlayIconPainter(
+                    painter = painterResource(id = R.drawable.baseline_restaurant_24),
                     onClick = {
-                        // Handle feeding action
-                        hunger = minOf(100, hunger + 20)
-                        health = minOf(100, health + 5)
-                    }
+                        if (isClickable) {
+                            hunger = minOf(100, hunger + 20)
+                            health = minOf(100, health + 5)
+                            lastClickTime = System.currentTimeMillis()
+                        }
+                    },
+                    modifier = Modifier.alpha(if (isClickable) 1f else 0.5f)
+                // Dim the icon during cooldown
                 )
+
+
+
+
 
                 // Play icon
                 OverlayIcon(
@@ -281,6 +296,31 @@ fun HomeScreen() {
                     color = Color.Gray
                 )
             }
+        }
+    }
+}
+@Composable
+fun OverlayIconPainter(
+    painter: Painter,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = CircleShape,
+        color = Color.Black.copy(alpha = 0.7f),
+        modifier = Modifier
+            .size(48.dp)
+            .clickable { onClick() }
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Image(
+                painter = painter,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }
