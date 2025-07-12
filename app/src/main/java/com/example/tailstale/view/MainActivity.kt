@@ -205,11 +205,11 @@ fun VideoPlayerView(modifier: Modifier = Modifier) {
     }
 
     // Uncomment and modify this when you have a video file
-    /*
+
     AndroidView(
         factory = { context ->
             VideoView(context).apply {
-                setVideoURI(Uri.parse("android.resource://$packageName/${R.raw.your_video_file}"))
+                setVideoURI(Uri.parse("android.resource://${context.packageName}/${R.raw.pupwalking}"))
                 setOnPreparedListener { mediaPlayer ->
                     mediaPlayer.isLooping = true
                     start()
@@ -218,7 +218,7 @@ fun VideoPlayerView(modifier: Modifier = Modifier) {
         },
         modifier = modifier
     )
-    */
+
 }
 
 @Composable
