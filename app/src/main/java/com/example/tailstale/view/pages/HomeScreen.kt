@@ -1,6 +1,8 @@
 package com.example.tailstale.view.pages
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +46,7 @@ fun HomeScreen() {
     var health by remember { mutableStateOf(85) }
     var hunger by remember { mutableStateOf(40) }
     var happiness by remember { mutableStateOf(70) }
+    var showPlayVideo by remember { mutableStateOf(false) }
 
     val cooldownMillis = 90_000L
     var lastClickTime by remember { mutableStateOf(0L) }
@@ -112,6 +116,7 @@ fun HomeScreen() {
             // Video view (placeholder for now - you'll need to add actual video file)
             VideoPlayerView(
                 modifier = Modifier.fillMaxSize()
+
             )
 
             // Overlay icons on the right side
@@ -122,14 +127,29 @@ fun HomeScreen() {
                     .zIndex(1f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Walking icon
+                // Walking icon without outer circle
+              /*  Image(
+                    painter = painterResource(id = R.drawable.baseline_directions_walk_24),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .alpha(0.8f)
+                        .padding(start = 35.dp) // Moves icon to the right
+                        .clickable {
+                            happiness = minOf(100, happiness + 10)
+                            hunger = maxOf(0, hunger - 5)
+                        },
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.Black)
+                )
+                */
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_directions_walk_24),
                     onClick = {
                         // Handle walking action
                         happiness = minOf(100, happiness + 10)
                         hunger = maxOf(0, hunger - 5)
-                    }
+                    },
+                    modifier = Modifier.alpha(0.8f)
                 )
 
                 //Feeding icon

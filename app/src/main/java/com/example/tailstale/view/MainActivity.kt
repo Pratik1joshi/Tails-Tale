@@ -187,7 +187,7 @@ fun OverlayIconPainter(
 fun VideoPlayerView(modifier: Modifier = Modifier) {
     val context = LocalContext.current
 
-    // Placeholder for video - replace with actual video file
+    // video box
     Box(
         modifier = modifier
             .background(
@@ -196,28 +196,24 @@ fun VideoPlayerView(modifier: Modifier = Modifier) {
             ),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            "🐕\nVideo Player\n(Replace with actual video file)",
-            fontSize = 16.sp,
-            textAlign = TextAlign.Center,
-            color = Color.Gray
+        //default video player using AndroidView
+
+        AndroidView(
+            factory = { context ->
+                VideoView(context).apply {
+                    setVideoURI(Uri.parse("android.resource://${context.packageName}/${R.raw.pupwalking}"))
+                    setOnPreparedListener { mediaPlayer ->
+                        mediaPlayer.isLooping = true
+                        start()
+                    }
+                }
+            },
+            modifier = modifier
         )
+
     }
 
-    // Uncomment and modify this when you have a video file
 
-    AndroidView(
-        factory = { context ->
-            VideoView(context).apply {
-                setVideoURI(Uri.parse("android.resource://${context.packageName}/${R.raw.pupwalking}"))
-                setOnPreparedListener { mediaPlayer ->
-                    mediaPlayer.isLooping = true
-                    start()
-                }
-            }
-        },
-        modifier = modifier
-    )
 
 }
 
