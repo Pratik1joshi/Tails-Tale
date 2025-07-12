@@ -57,9 +57,9 @@ fun VirtualPetApp() {
     val tabs = listOf("Home", "Stats", "Add", "Activities", "Profile")
     val tabIcons = listOf(
         Icons.Default.Home,
-        Icons.Default.Settings,//baseline_bar_chart_24
+        painterResource(id = R.drawable.baseline_bar_chart_24),
         Icons.Default.Add,
-        Icons.Default.Star,//baseline_directions_run_24
+        painterResource(id = R.drawable.baseline_directions_run_24),
         Icons.Default.Person
     )
 
@@ -109,11 +109,21 @@ fun VirtualPetApp() {
                 tabs.forEachIndexed { index, title ->
                     NavigationBarItem(
                         icon = {
-                            Icon(
-                                tabIcons[index],
-                                contentDescription = title,
-                                tint = if (selectedTab == index) Color(0xFF007AFF) else Color.Gray
-                            )
+                            when (val icon = tabIcons[index]) {
+                                is ImageVector -> Icon(
+                                    icon,
+                                    contentDescription = title,
+                                    tint = if (selectedTab == index) Color(0xFF007AFF) else Color.Gray
+                                )
+                                is Painter -> Image(
+                                    painter = icon,
+                                    contentDescription = title,
+                                    modifier = Modifier.size(24.dp),
+                                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                                        if (selectedTab == index) Color(0xFF007AFF) else Color.Gray
+                                    )
+                                )
+                            }
                         },
                         label = {
                             Text(
