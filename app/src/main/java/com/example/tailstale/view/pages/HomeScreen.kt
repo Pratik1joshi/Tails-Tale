@@ -113,6 +113,36 @@ fun HomeScreen() {
                 .height(300.dp)
                 .clip(RoundedCornerShape(16.dp))
         ) {
+            // Inside the Box (after VideoPlayerView, before the right-side Column)
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(16.dp)
+                    .zIndex(1f),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OverlayIconPainter(
+                    painter = painterResource(id = R.drawable.baseline_bed_24),
+                    onClick = { /* Action 1 */ },
+                    modifier = Modifier.alpha(0.8f)
+                )
+                OverlayIconPainter(
+                    painter = painterResource(id = R.drawable.baseline_wash_24),
+                    onClick = { /* Action 2 */ },
+                    modifier = Modifier.alpha(0.8f)
+                )
+                OverlayIconPainter(
+                    painter = painterResource(id = R.drawable.baseline_chair_alt_24),
+                    onClick = { /* Action 3 */ },
+                    modifier = Modifier.alpha(0.8f)
+                )
+                OverlayIconPainter(
+                    painter = painterResource(id = R.drawable.baseline_bathtub_24),
+                    onClick = { /* Action 4 */ },
+                    modifier = Modifier.alpha(0.8f)
+                )
+            }
+        }
             // Video view (placeholder for now - you'll need to add actual video file)
             VideoPlayerView(
                 modifier = Modifier.fillMaxSize()
@@ -122,7 +152,7 @@ fun HomeScreen() {
             // Overlay icons on the right side
             Column(
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
+                    .align(Alignment.End)
                     .padding(16.dp)
                     .zIndex(1f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -185,6 +215,8 @@ fun HomeScreen() {
                         health = minOf(100, health + 20)
                     }
                 )
+
+
             }
         }
 
@@ -215,4 +247,5 @@ fun HomeScreen() {
             }
         }
     }
-}
+
+
