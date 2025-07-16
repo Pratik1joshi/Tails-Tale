@@ -51,8 +51,11 @@ fun HomeScreen() {
     val cooldownMillis = 90_000L
     var lastClickTime by remember { mutableStateOf(0L) }
     val currentTime = System.currentTimeMillis()
-    val isClickable = currentTime - lastClickTime > cooldownMillis
 
+    val isClickable = currentTime - lastClickTime > cooldownMillis
+// Video state
+    var selectedVideoRes by remember { mutableStateOf(R.raw.sitting) }
+    var isLooping by remember { mutableStateOf(true) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -107,13 +110,26 @@ fun HomeScreen() {
         Spacer(modifier = Modifier.height(24.dp))
 
         // Video with overlay icons
+
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(300.dp)
                 .clip(RoundedCornerShape(16.dp))
         ) {
-            // Inside the Box (after VideoPlayerView, before the right-side Column)
+            // Video as background
+            VideoPlayerView(
+                modifier = Modifier.matchParentSize(),
+                videoRes = selectedVideoRes,
+                isLooping = isLooping,
+                onCompletion = {
+                    selectedVideoRes = R.raw.sitting
+                    isLooping = true
+                }
+            )
+
+            // Left-side icons
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
@@ -123,66 +139,48 @@ fun HomeScreen() {
             ) {
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_bed_24),
-                    onClick = { /* Action 1 */ },
+                    onClick = {
+                        selectedVideoRes = R.raw.pupsleeping
+                        isLooping = true
+                    },
                     modifier = Modifier.alpha(0.8f)
                 )
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_wash_24),
-                    onClick = { /* Action 2 */ },
+                    onClick = { selectedVideoRes = R.raw.pupbathing },
                     modifier = Modifier.alpha(0.8f)
                 )
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_chair_alt_24),
-                    onClick = { /* Action 3 */ },
+                    onClick = { selectedVideoRes = R.raw.pupsleeping },
                     modifier = Modifier.alpha(0.8f)
                 )
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_bathtub_24),
-                    onClick = { /* Action 4 */ },
+                    onClick = { selectedVideoRes = R.raw.pupbathing },
                     modifier = Modifier.alpha(0.8f)
                 )
-            }
-        }
-            // Video view (placeholder for now - you'll need to add actual video file)
-            VideoPlayerView(
-                modifier = Modifier.fillMaxSize()
 
-            )
+            }
+
 
             // Overlay icons on the right side
+            // Right-side icons
             Column(
                 modifier = Modifier
-                    .align(Alignment.End)
+                    .align(Alignment.CenterEnd)
                     .padding(16.dp)
                     .zIndex(1f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Walking icon without outer circle
-              /*  Image(
-                    painter = painterResource(id = R.drawable.baseline_directions_walk_24),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .alpha(0.8f)
-                        .padding(start = 35.dp) // Moves icon to the right
-                        .clickable {
-                            happiness = minOf(100, happiness + 10)
-                            hunger = maxOf(0, hunger - 5)
-                        },
-                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.Black)
-                )
-                */
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_directions_walk_24),
                     onClick = {
-                        // Handle walking action
                         happiness = minOf(100, happiness + 10)
                         hunger = maxOf(0, hunger - 5)
                     },
                     modifier = Modifier.alpha(0.8f)
                 )
-
-                //Feeding icon
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_restaurant_24),
                     onClick = {
@@ -193,31 +191,22 @@ fun HomeScreen() {
                         }
                     },
                     modifier = Modifier.alpha(if (isClickable) 1f else 0.5f)
-                    // Dim the icon during cooldown
                 )
-
-
-                // Play icon
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_sports_basketball_24),
                     onClick = {
-                        // Handle play action
                         happiness = minOf(100, happiness + 5)
                         hunger = maxOf(0, hunger - 3)
                     }
                 )
-
-                // Medical icon
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.outline_local_hospital_24),
                     onClick = {
-                        // Handle medical action
                         health = minOf(100, health + 20)
                     }
                 )
-
-
             }
+
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -245,7 +234,14 @@ fun HomeScreen() {
                     color = Color.Gray
                 )
             }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
+}
+
+
+
+
+
 
 

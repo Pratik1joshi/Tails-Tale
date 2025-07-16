@@ -53,6 +53,10 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VirtualPetApp() {
+
+    var selectedVideoRes by remember { mutableStateOf(R.raw.sitting) }
+    var isLooping by remember { mutableStateOf(true) }
+    val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Home", "Stats", "Add", "Activities", "Profile")
     val tabIcons = listOf(
@@ -183,40 +187,31 @@ fun OverlayIconPainter(
     }
 }
 
+
 @Composable
-fun VideoPlayerView(modifier: Modifier = Modifier) {
+fun VideoPlayerView(
+    modifier: Modifier = Modifier,
+    videoRes: Int,
+    isLooping: Boolean,
+    onCompletion: () -> Unit
+) {
     val context = LocalContext.current
-
-    // video box
-    Box(
-        modifier = modifier
-            .background(
-                Color(0xFFFFE0B2), // Light orange background as placeholder
-                RoundedCornerShape(16.dp)
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        //default video player using AndroidView
-
-        AndroidView(
-            factory = { context ->
-                VideoView(context).apply {
-                    setVideoURI(Uri.parse("android.resource://${context.packageName}/${R.raw.pupwalking}"))
-                    setOnPreparedListener { mediaPlayer ->
-                        mediaPlayer.isLooping = true
-                        start()
-                    }
-                }
-            },
-            modifier = modifier
-        )
-
-    }
-
-
-
+    AndroidView(
+        factory = { ctx ->
+            android.widget.VideoView(ctx).apply {
+                setVideoURI(android.net.Uri.parse("android.resource://${ctx.packageName}/$videoRes"))
+                setOnPreparedListener { it.isLooping = isLooping; start() }
+                setOnCompletionListener { onCompletion() }
+            }
+        },
+        modifier = modifier,
+        update = { view ->
+            view.setVideoURI(android.net.Uri.parse("android.resource://${context.packageName}/$videoRes"))
+            view.setOnPreparedListener { it.isLooping = isLooping; view.start() }
+            view.setOnCompletionListener { onCompletion() }
+        }
+    )
 }
-
 @Composable
 fun OverlayIcon(
     icon: ImageVector,
