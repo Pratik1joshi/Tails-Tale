@@ -67,6 +67,17 @@ fun ActivitiesScreen() {
             Spacer(modifier = Modifier.height(24.dp))
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Activity Records", fontWeight = FontWeight.Bold)
+                val activities = listOf(
+                    ActivityRecord("Playing", Date()),
+                    ActivityRecord("Sleeping", Date(System.currentTimeMillis() - 3600000L)),
+                    ActivityRecord("Sitting", Date(System.currentTimeMillis() - 7200000L)),
+                    ActivityRecord("Playing", Date(System.currentTimeMillis() - 10800000L)),
+                    ActivityRecord("Eating", Date(System.currentTimeMillis() - 12000000L)),
+                    ActivityRecord("Running", Date(System.currentTimeMillis() - 12600000L)),
+                    ActivityRecord("Playing", Date(System.currentTimeMillis() - 13200000L)),
+                    ActivityRecord("Sleeping", Date(System.currentTimeMillis() - 14400000L)),
+                    ActivityRecord("Sitting", Date(System.currentTimeMillis() - 18000000L))
+                )
                 activities.forEach {
                     Text("- ${it.activity}: ${dateFormat.format(it.date)}")
                 }
