@@ -147,6 +147,7 @@ fun HomeScreen() {
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_bed_24),
                     onClick = {
+                        health = minOf(100, health + 5)
                         selectedVideoRes = R.raw.pupsleeping
                         isLooping = true
                         coroutineScope.launch {
@@ -161,6 +162,9 @@ fun HomeScreen() {
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_wash_24),
                     onClick = {
+                        hunger = minOf(100, hunger + 20)
+                        health = minOf(100, health + 5)
+                        happiness = minOf(100, happiness + 5)
                         selectedVideoRes = R.raw.pupbathing
                         isLooping = true
                         coroutineScope.launch {
@@ -175,6 +179,8 @@ fun HomeScreen() {
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_chair_alt_24),
                     onClick = { selectedVideoRes = R.raw.pupsitting
+                        health = minOf(100, health + 5)
+                        happiness = minOf(100, happiness + 5)
                               isLooping = true
                                 coroutineScope.launch {
                                     delay(30_000) // 30 seconds delay
@@ -187,6 +193,9 @@ fun HomeScreen() {
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_bathtub_24),
                     onClick = { selectedVideoRes = R.raw.pupbathing
+                        hunger = minOf(100, hunger + 20)
+                        health = minOf(100, health + 5)
+                        happiness = minOf(100, happiness + 5)
                               isLooping = true
                                 coroutineScope.launch {
                                     delay(30_000) // 30 seconds delay
