@@ -19,10 +19,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.text.SimpleDateFormat
+import java.util.Date
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.unit.dp
 
+data class ActivityRecord(val activity: String, val date: Date)
 
 @Composable
 fun ActivitiesScreen() {
+    val activities = listOf(
+        ActivityRecord("Playing", Date()),
+        ActivityRecord("Sleeping", Date(System.currentTimeMillis() - 3600000L)),
+        ActivityRecord("Sitting", Date(System.currentTimeMillis() - 7200000L))
+    )
+    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()) }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -51,6 +64,13 @@ fun ActivitiesScreen() {
                 color = Color.Gray,
                 textAlign = TextAlign.Center
             )
+            Spacer(modifier = Modifier.height(24.dp))
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Activity Records", fontWeight = FontWeight.Bold)
+                activities.forEach {
+                    Text("- ${it.activity}: ${dateFormat.format(it.date)}")
+                }
+            }
         }
     }
 }
