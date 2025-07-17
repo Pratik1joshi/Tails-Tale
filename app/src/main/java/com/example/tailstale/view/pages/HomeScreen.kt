@@ -143,32 +143,57 @@ fun HomeScreen() {
                     .zIndex(1f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // sleeping icon actions
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_bed_24),
                     onClick = {
                         selectedVideoRes = R.raw.pupsleeping
-                        isLooping = false
+                        isLooping = true
                         coroutineScope.launch {
-                            delay(60_000) // 1 minute
+                            delay(30_000) // 30 seconds delay
                             selectedVideoRes = R.raw.sitting
                             isLooping = true
                         }
                     },
                     modifier = Modifier.alpha(0.8f)
                 )
+                //bathing icon actions
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_wash_24),
-                    onClick = { selectedVideoRes = R.raw.pupbathing },
+                    onClick = {
+                        selectedVideoRes = R.raw.pupbathing
+                        isLooping = true
+                        coroutineScope.launch {
+                            delay(30_000) // 30 seconds delay
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
+                    },
                     modifier = Modifier.alpha(0.8f)
                 )
+                // sitting icon action
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_chair_alt_24),
-                    onClick = { selectedVideoRes = R.raw.pupsitting },
+                    onClick = { selectedVideoRes = R.raw.pupsitting
+                              isLooping = true
+                                coroutineScope.launch {
+                                    delay(30_000) // 30 seconds delay
+                                    selectedVideoRes = R.raw.sitting
+                                    isLooping = true
+                                }
+                              },
                     modifier = Modifier.alpha(0.8f)
                 )
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_bathtub_24),
-                    onClick = { selectedVideoRes = R.raw.pupbathing },
+                    onClick = { selectedVideoRes = R.raw.pupbathing
+                              isLooping = true
+                                coroutineScope.launch {
+                                    delay(30_000) // 30 seconds delay
+                                    selectedVideoRes = R.raw.sitting
+                                    isLooping = true
+                                }
+                              },
                     modifier = Modifier.alpha(0.8f)
                 )
 
@@ -249,6 +274,8 @@ fun HomeScreen() {
         }
     }
 }
+
+
 
 
 
