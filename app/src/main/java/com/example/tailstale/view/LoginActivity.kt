@@ -51,6 +51,8 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.OAuthProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.tailstale.view.MainActivity
+
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

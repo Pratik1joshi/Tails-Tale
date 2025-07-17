@@ -3,8 +3,6 @@ package com.example.tailstale.view.pages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-
-
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,20 +26,57 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.tailstale.view.AchievementBadge
 import com.example.tailstale.view.PageHeader
-import com.example.tailstale.view.ProfileInfoRow
 
-//@Composable
-//fun Profile() {
-//    Column (
-//        modifier = Modifier
-//            .fillMaxSize()
-//            .background(color = Color.White)
-//    ){
-//        Text("Yooooooooooo" )
-//    }
-//}
+@Composable
+fun ProfileInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            color = Color.Gray,
+            fontWeight = FontWeight.Medium
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            color = Color.Black,
+            fontWeight = FontWeight.Normal
+        )
+    }
+}
+
+@Composable
+fun AchievementBadge(emoji: String, title: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .background(Color(0xFFF0F0F0), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = emoji,
+                fontSize = 24.sp
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = title,
+            fontSize = 10.sp,
+            color = Color.Gray,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
 
 @Composable
 fun Profile() {
@@ -151,6 +186,7 @@ fun Profile() {
         }
     }
 }
+
 @Composable
 @Preview
 fun ProfilePagePreview() {

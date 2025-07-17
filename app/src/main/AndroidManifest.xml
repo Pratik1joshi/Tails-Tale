@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.example.tailstale">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -13,59 +12,48 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.TailsTale"
         tools:targetApi="31">
-        <activity
-            android:name=".view.OnboardingActivity"
-            android:exported="true"
-            android:label="@string/title_activity_onboarding"
-            android:theme="@style/Theme.TailsTale">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <activity
-            android:name=".view.dashboard.TestDashboardActivity"
-            android:exported="true"
-            android:label="@string/title_activity_test_dashboard"
-            android:theme="@style/Theme.TailsTale">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <activity
-            android:name=".view.DashboardActivity"
-            android:exported="false"
-            android:label="@string/title_activity_dashboard"
-            android:theme="@style/Theme.TailsTale" />
-        <activity
-            android:name=".view.SignUpActivity"
-            android:exported="false"
-            android:label="@string/title_activity_sign_up"
-            android:theme="@style/Theme.TailsTale" /> <!-- SplashActivity is the launcher -->
+        <!-- MainActivity - Main app screen after authentication -->
         <activity
             android:name=".view.SplashActivity"
             android:exported="true"
-            android:label="@string/title_activity_splash"
+            android:label="@string/app_name"
             android:theme="@style/Theme.TailsTale">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity> <!-- Login screen -->
+        </activity>
+
+        <!-- SplashActivity as the main launcher -->
+        <activity
+            android:name=".view.MainActivity"
+            android:exported="false"
+            android:label="@string/title_activity_splash"
+            android:theme="@style/Theme.TailsTale">
+        </activity>
+
+        <!-- OnboardingActivity -->
+        <activity
+            android:name=".view.OnboardingActivity"
+            android:exported="false"
+            android:label="@string/title_activity_onboarding"
+            android:theme="@style/Theme.TailsTale" />
+
+        <!-- LoginActivity -->
         <activity
             android:name=".view.LoginActivity"
             android:exported="false"
             android:label="@string/title_activity_login"
-            android:theme="@style/Theme.TailsTale" /> <!-- Optional main/home screen -->
-        <activity
-            android:name=".view.MainActivity"
-            android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.TailsTale" />
+
+        <!-- SignUpActivity -->
+        <activity
+            android:name=".view.SignUpActivity"
+            android:exported="false"
+            android:label="@string/title_activity_sign_up"
+            android:theme="@style/Theme.TailsTale" />
+
     </application>
 
 </manifest>

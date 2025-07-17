@@ -1,4 +1,4 @@
-package com.example.tailstale
+package com.example.tailstale.view
 
 
 import android.os.Bundle
@@ -33,6 +33,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.tailstale.view.OnboardingStoryFlow
 import com.example.tailstale.view.pages.ActivitiesScreen
 import com.example.tailstale.view.pages.AddScreen
 import com.example.tailstale.view.pages.HomeScreen
@@ -288,4 +290,10 @@ fun VirtualPetTheme(content: @Composable () -> Unit) {
         ),
         content = content
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MainPreview() {
+    MainActivity()
 }

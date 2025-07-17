@@ -1,165 +1,311 @@
 package com.example.tailstale.view.pages
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.tailstale.view.AppHeader
-import com.example.tailstale.view.HealthStatsSection
-import com.example.tailstale.view.PetImageSection
-import com.example.tailstale.view.PetInfoSection
-import com.example.tailstale.view.QuickActionsSection
+import androidx.compose.ui.unit.sp
 
-class HomeActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            Home()
+@Composable
+fun AppHeader() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // App logo placeholder
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(Color(0xFFFF9500), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("🐾", fontSize = 16.sp)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("PAWS TALK", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Row {
+            IconButton(onClick = { /* Notifications */ }) {
+                Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+            }
+            IconButton(onClick = { /* Settings */ }) {
+                Icon(Icons.Default.Settings, contentDescription = "Settings")
+            }
         }
     }
 }
 
-//
-//@OptIn(ExperimentalMaterial3Api::class)
-//
-//
-//@Composable
-//fun BottomNavigation() {
-//    Surface(
-//        color = Color.White,
-//        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-//        shadowElevation = 8.dp
-//    ) {
-//        Row(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(vertical = 16.dp),
-//            horizontalArrangement = Arrangement.SpaceEvenly
-//        ) {
-//// home health
-//            BottomNavItem(Icons.Default.Home, "Home", true)
-//            BottomNavItem(Icons.Default.Favorite, "Health", false)
-//
-//// Plus button
-//            FloatingActionButton(
-//                onClick = { },
-//                containerColor = Color(0xFF00BCD4),
-//                modifier = Modifier.size(48.dp)
-//            ) {
-//                Icon(
-//                    Icons.Default.Add,
-//                    contentDescription = "Add",
-//                    tint = Color.White
-//                )
-//            }
-//
-//// food person
-//            BottomNavItem(Icons.Default.Home, "Food", false)
-//            BottomNavItem(Icons.Default.Person, "Profile", false)
-//        }
-//    }
-//}
-//// bottom navigation item
-//@Composable
-//fun BottomNavItem(icon: ImageVector, label: String, isSelected: Boolean) {
-//    Column(
-//        horizontalAlignment = Alignment.CenterHorizontally,
-//        modifier = Modifier.padding(horizontal = 8.dp)
-//    ) {
-//
-//        Icon(
-//            imageVector = icon,
-//            contentDescription = label,
-//            tint = if (isSelected) Color(0xFFFF8C42) else Color.Gray,
-//            modifier = Modifier.size(24.dp)
-//        )
-//        Spacer(modifier = Modifier.height(4.dp))
-//        Text(
-//            text = label,
-//            fontSize = 12.sp,
-//            color = if (isSelected) Color(0xFFFF8C42) else Color.Gray
-//        )
-//    }
-//}
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//fun Home() {
-//    Column (
-//        modifier = Modifier
-//            .fillMaxSize()
-//            .background(color = Color.White)
-//    ){
-//        // TopAppBar
-//        val topAppBarState = rememberTopAppBarState()
-//        Scaffold(
-//            topBar = {
-//                androidx.compose.material3.TopAppBar(
-//                    title = { Image(
-//                        painter = painterResource(R.drawable.logo),
-//                        contentDescription = null,
-//                        contentScale = ContentScale.Crop,
-//                        modifier = Modifier
-//
-//                            .height(100.dp)
-//                            .width(100.dp)
-//                            .offset(x=-22.dp, y= -12.dp)
-//
-//                    )},
-//                    navigationIcon = {
-//                        {
-////                            Icon(Icons.Default.ArrowBack,contentDescription = null)
-//                        }
-//                    },
-//                    actions = {
-//                        IconButton(onClick = {
-//                            // Handle notification action
-//                        }) {
-//                            Icon(Icons.Default.Notifications,contentDescription = null)
-//                        }
-//
-//                        IconButton(onClick = {
-//                            //handles settings action
-//                        }) {
-//                            Icon(Icons.Default.Settings,contentDescription = null)
-//                        }
-//                    },
-//                    modifier = Modifier
-//                        .fillMaxSize()
-//                        .height(56.dp),
-//
-//
-//
-//
-//                )
-//            }
-//        ) { innerPadding ->
-//            Column(
-//                modifier = Modifier
-//                    .fillMaxSize()
-//                    .padding(innerPadding)
-//            ) {
-//
-//
-//            }
-//        }
-//
-//
-//
-//
-//
-//    }
-//}
+@Composable
+fun PetInfoSection() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = "Good morning!",
+                fontSize = 16.sp,
+                color = Color.Gray
+            )
+            Text(
+                text = "Buddy",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+            Text(
+                text = "Golden Retriever • 2 years old",
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
+        }
 
+        // Profile image placeholder
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .background(Color(0xFFE3F2FD), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("🐕", fontSize = 30.sp)
+        }
+    }
+}
+
+@Composable
+fun HealthStatsSection() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = "Today's Health",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                HealthStatItem(
+                    modifier = Modifier.weight(1f),
+                    label = "Happiness",
+                    value = 85,
+                    color = Color(0xFF4CAF50)
+                )
+                HealthStatItem(
+                    modifier = Modifier.weight(1f),
+                    label = "Energy",
+                    value = 70,
+                    color = Color(0xFF2196F3)
+                )
+                HealthStatItem(
+                    modifier = Modifier.weight(1f),
+                    label = "Health",
+                    value = 90,
+                    color = Color(0xFFFF9500)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun HealthStatItem(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: Int,
+    color: Color
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "$value%",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = Color.Gray
+        )
+    }
+}
+
+@Composable
+fun PetImageSection() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp)
+            .background(
+                Color(0xFFFFE0B2),
+                RoundedCornerShape(16.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "🐕",
+                fontSize = 64.sp
+            )
+            Text(
+                text = "Buddy is happy!",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF795548)
+            )
+        }
+
+        // Overlay buttons
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            QuickActionButton(
+                icon = Icons.Default.PlayArrow,
+                onClick = { /* Play */ }
+            )
+            QuickActionButton(
+                icon = Icons.Default.Favorite,
+                onClick = { /* Feed */ }
+            )
+        }
+    }
+}
+
+@Composable
+fun QuickActionButton(
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = CircleShape,
+        color = Color.Black.copy(alpha = 0.7f),
+        modifier = Modifier
+            .size(40.dp)
+            .clickable { onClick() }
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun QuickActionsSection() {
+    Column {
+        Text(
+            text = "Quick Actions",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            QuickActionCard(
+                modifier = Modifier.weight(1f),
+                title = "Feed",
+                icon = Icons.Default.Favorite,
+                color = Color(0xFFE91E63),
+                onClick = { /* Navigate to feed */ }
+            )
+            QuickActionCard(
+                modifier = Modifier.weight(1f),
+                title = "Walk",
+                icon = Icons.Default.Place,
+                color = Color(0xFF4CAF50),
+                onClick = { /* Navigate to walk */ }
+            )
+            QuickActionCard(
+                modifier = Modifier.weight(1f),
+                title = "Play",
+                icon = Icons.Default.Star,
+                color = Color(0xFF2196F3),
+                onClick = { /* Navigate to play */ }
+            )
+        }
+    }
+}
+
+@Composable
+fun QuickActionCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    icon: ImageVector,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier
+            .height(80.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = color,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.Black
+            )
+        }
+    }
+}
 
 @Composable
 fun Home() {
@@ -192,6 +338,7 @@ fun Home() {
         QuickActionsSection()
     }
 }
+
 @Preview(showBackground = true)
 @Composable
 fun HomePreview() {
