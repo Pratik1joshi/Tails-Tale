@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -81,7 +82,7 @@ fun HomeScreen() {
                     "Buddy",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Surface(
@@ -91,7 +92,7 @@ fun HomeScreen() {
                     Text(
                         "Puppy",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.background,
                         fontSize = 12.sp
                     )
                 }
@@ -100,7 +101,7 @@ fun HomeScreen() {
             Text(
                 "3 months old",
                 fontSize = 14.sp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -181,13 +182,13 @@ fun HomeScreen() {
                     onClick = { selectedVideoRes = R.raw.pupsitting
                         health = minOf(100, health + 5)
                         happiness = minOf(100, happiness + 5)
-                              isLooping = true
-                                coroutineScope.launch {
-                                    delay(30_000) // 30 seconds delay
-                                    selectedVideoRes = R.raw.sitting
-                                    isLooping = true
-                                }
-                              },
+                        isLooping = true
+                        coroutineScope.launch {
+                            delay(30_000) // 30 seconds delay
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
+                    },
                     modifier = Modifier.alpha(0.8f)
                 )
                 // bathing icon action
@@ -197,13 +198,13 @@ fun HomeScreen() {
                         hunger = minOf(100, hunger + 20)
                         health = minOf(100, health + 5)
                         happiness = minOf(100, happiness + 5)
-                              isLooping = true
-                                coroutineScope.launch {
-                                    delay(30_000) // 30 seconds delay
-                                    selectedVideoRes = R.raw.sitting
-                                    isLooping = true
-                                }
-                              },
+                        isLooping = true
+                        coroutineScope.launch {
+                            delay(30_000) // 30 seconds delay
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
+                    },
                     modifier = Modifier.alpha(0.8f)
                 )
 
@@ -285,7 +286,7 @@ fun HomeScreen() {
         // Pet care tips
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
         ) {
             Column(
                 modifier = Modifier.padding(16.dp)
@@ -294,7 +295,7 @@ fun HomeScreen() {
                     "Pet Care Tips",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -302,7 +303,7 @@ fun HomeScreen() {
                             "• Play with your pet to increase happiness\n" +
                             "• Regular exercise keeps your pet healthy",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))

@@ -16,37 +16,35 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.zIndex
-import android.widget.VideoView
-import android.net.Uri
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.layout.ContentScale
 import com.example.tailstale.view.LoginActivity
 import com.example.tailstale.view.pages.ActivitiesScreen
 import com.example.tailstale.view.pages.AddScreen
 import com.example.tailstale.view.pages.HomeScreen
 import com.example.tailstale.view.pages.ProfileScreen
 import com.example.tailstale.view.pages.StatsScreen
+import androidx.compose.foundation.isSystemInDarkTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            VirtualPetTheme {
-                VirtualPetApp()
+
+            var isDarkTheme by remember { mutableStateOf(false) }
+
+            VirtualPetTheme(darkTheme = isDarkTheme) {
+                VirtualPetApp(onToggleTheme = { isDarkTheme = !isDarkTheme })
+
+
             }
         }
     }
@@ -54,7 +52,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VirtualPetApp() {
+fun VirtualPetApp(onToggleTheme: () -> Unit) {
 
     var selectedVideoRes by remember { mutableStateOf(R.raw.sitting) }
     var isLooping by remember { mutableStateOf(true) }
@@ -63,6 +61,8 @@ fun VirtualPetApp() {
     val tabs = listOf("Home", "Stats", "Add", "Activities", "Profile")
     var showSettingsMenu by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var isDarkTheme by remember { mutableStateOf(false) }
+
 
     val tabIcons = listOf(
         Icons.Default.Home,
@@ -76,7 +76,7 @@ fun VirtualPetApp() {
 
 
 
-                topBar = {
+        topBar = {
             TopAppBar(
                 title = {
                     Row(
@@ -113,6 +113,7 @@ fun VirtualPetApp() {
                                         text = { Text("Dark Mode") },
                                         onClick = {
                                             // Handle dark mode toggle
+                                            onToggleTheme()
                                             showSettingsMenu = false
                                         }
                                     )
@@ -135,13 +136,13 @@ fun VirtualPetApp() {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
         bottomBar = {
             NavigationBar(
-                containerColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.background,
                 contentColor = Color(0xFF007AFF)
             ) {
                 tabs.forEachIndexed { index, title ->
@@ -151,14 +152,14 @@ fun VirtualPetApp() {
                                 is ImageVector -> Icon(
                                     icon,
                                     contentDescription = title,
-                                    tint = if (selectedTab == index) Color(0xFF007AFF) else Color.Gray
+                                    tint = if (selectedTab == index) Color(0xFF007AFF) else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 is Painter -> Image(
                                     painter = icon,
                                     contentDescription = title,
                                     modifier = Modifier.size(24.dp),
                                     colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
-                                        if (selectedTab == index) Color(0xFF007AFF) else Color.Gray
+                                        if (selectedTab == index) Color(0xFF007AFF) else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 )
                             }
@@ -167,7 +168,7 @@ fun VirtualPetApp() {
                             Text(
                                 title,
                                 fontSize = 10.sp,
-                                color = if (selectedTab == index) Color(0xFF007AFF) else Color.Gray
+                                color = if (selectedTab == index) Color(0xFF007AFF) else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
                         selected = selectedTab == index,
@@ -227,7 +228,7 @@ fun OverlayIconPainter(
 ) {
     Surface(
         shape = CircleShape,
-        color = Color.Black.copy(alpha = 0.7f),
+        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
         modifier = Modifier
             .size(48.dp)
             .clickable { onClick() }
@@ -277,7 +278,7 @@ fun OverlayIcon(
 ) {
     Surface(
         shape = CircleShape,
-        color = Color.Black.copy(alpha = 0.7f),
+        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
         modifier = Modifier
             .size(48.dp)
             .clickable { onClick() }
@@ -289,7 +290,7 @@ fun OverlayIcon(
             Icon(
                 icon,
                 contentDescription = null,
-                tint = Color.White,
+                tint = MaterialTheme.colorScheme.background,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -306,13 +307,13 @@ fun StatusBar(label: String, value: Int, color: Color) {
             Text(
                 label,
                 fontSize = 12.sp,
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 "${value}%",
                 fontSize = 12.sp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
@@ -320,7 +321,7 @@ fun StatusBar(label: String, value: Int, color: Color) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(8.dp)
-                .background(Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
         ) {
             Box(
                 modifier = Modifier
@@ -334,17 +335,18 @@ fun StatusBar(label: String, value: Int, color: Color) {
 
 // Other screen composables
 
-
-
 @Composable
-fun VirtualPetTheme(content: @Composable () -> Unit) {
+fun VirtualPetTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    val colorScheme = if (darkTheme) darkColorScheme() else lightColorScheme()
+
     MaterialTheme(
-        colorScheme = lightColorScheme(
-            primary = Color(0xFF007AFF),
-            secondary = Color(0xFFFF9500),
-            background = Color(0xFFF5F5F5),
-            surface = Color.White
-        ),
+        colorScheme = colorScheme,
+        typography = MaterialTheme.typography,
         content = content
     )
 }
+
+
