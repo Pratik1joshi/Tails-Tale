@@ -1,6 +1,7 @@
 package com.example.tailstale
 
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -33,6 +34,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import com.example.tailstale.view.LoginActivity
 import com.example.tailstale.view.pages.ActivitiesScreen
 import com.example.tailstale.view.pages.AddScreen
 import com.example.tailstale.view.pages.HomeScreen
@@ -60,6 +62,8 @@ fun VirtualPetApp() {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Home", "Stats", "Add", "Activities", "Profile")
     var showSettingsMenu by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
     val tabIcons = listOf(
         Icons.Default.Home,
         painterResource(id = R.drawable.baseline_bar_chart_24),
@@ -69,7 +73,10 @@ fun VirtualPetApp() {
     )
 
     Scaffold(
-        topBar = {
+
+
+
+                topBar = {
             TopAppBar(
                 title = {
                     Row(
@@ -114,6 +121,10 @@ fun VirtualPetApp() {
                                         onClick = {
                                             // Handle logout logic
                                             showSettingsMenu = false
+                                            showLogoutDialog = true
+
+
+
                                         }
                                     )
 
@@ -165,7 +176,9 @@ fun VirtualPetApp() {
                 }
             }
         }
-    ) { innerPadding ->
+    )
+
+    { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -179,6 +192,28 @@ fun VirtualPetApp() {
                 4 -> ProfileScreen()
             }
         }
+    }
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Confirm Logout") },
+            text = { Text("Are you sure you want to logout?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    val intent = Intent(context, LoginActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    context.startActivity(intent)
+                }) {
+                    Text("Logout")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
