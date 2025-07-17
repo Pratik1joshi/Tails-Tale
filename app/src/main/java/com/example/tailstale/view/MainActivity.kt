@@ -1,4 +1,4 @@
-package com.example.tailstale
+package com.example.tailstale.view
 
 
 import android.content.Intent
@@ -28,6 +28,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import android.widget.VideoView
 import android.net.Uri
+import com.example.tailstale.R
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image

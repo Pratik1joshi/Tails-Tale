@@ -4,8 +4,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.tailstale.R
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.min
 
@@ -52,7 +56,13 @@ private fun PetOverlayIcon(
 }
 
 @Composable
-private fun PetVideoPlayer(modifier: Modifier = Modifier) {
+private fun PetVideoPlayer(
+    modifier: Modifier = Modifier,
+    videoRes: Int = 0,
+    isLooping: Boolean = true,
+    onCompletion: () -> Unit = {}
+) {
+    // Placeholder for video - replace with actual video player when you have video files
     Box(
         modifier = modifier
             .background(
@@ -62,7 +72,7 @@ private fun PetVideoPlayer(modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            "🐕\nVideo Player\n(Replace with actual video file)",
+            "🐕\nVideo Player\n(Playing: ${if (videoRes != 0) "Video" else "Default"})",
             fontSize = 16.sp,
             textAlign = TextAlign.Center,
             color = Color.Gray
@@ -111,17 +121,24 @@ fun HomeScreen() {
     var health by remember { mutableStateOf(85) }
     var hunger by remember { mutableStateOf(40) }
     var happiness by remember { mutableStateOf(70) }
+    var showPlayVideo by remember { mutableStateOf(false) }
 
     val cooldownMillis = 90_000L
     var lastClickTime by remember { mutableStateOf(0L) }
     val currentTime = System.currentTimeMillis()
     val isClickable = currentTime - lastClickTime > cooldownMillis
 
+    // Video state
+    var selectedVideoRes by remember { mutableStateOf(R.raw.sitting) }
+    var isLooping by remember { mutableStateOf(true) }
+    val coroutineScope = rememberCoroutineScope()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF5F5F5))
             .padding(16.dp)
+            .verticalScroll(rememberScrollState())
     ) {
         // Pet info header
         Row(
@@ -175,11 +192,96 @@ fun HomeScreen() {
                 .height(300.dp)
                 .clip(RoundedCornerShape(16.dp))
         ) {
+            // Video as background
             PetVideoPlayer(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                videoRes = selectedVideoRes,
+                isLooping = isLooping,
+                onCompletion = {
+                    selectedVideoRes = R.raw.sitting
+                    isLooping = true
+                }
             )
 
-            // Overlay icons on the right side
+            // Left-side icons
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(16.dp)
+                    .zIndex(1f),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Sleeping icon actions
+                PetOverlayIcon(
+                    painter = painterResource(id = R.drawable.baseline_bed_24),
+                    onClick = {
+                        health = min(100, health + 5)
+                        selectedVideoRes = R.raw.pupsleeping
+                        isLooping = true
+                        coroutineScope.launch {
+                            delay(30_000) // 30 seconds delay
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
+                    },
+                    modifier = Modifier.alpha(0.8f)
+                )
+
+                // Washing icon actions
+                PetOverlayIcon(
+                    painter = painterResource(id = R.drawable.baseline_wash_24),
+                    onClick = {
+                        hunger = min(100, hunger + 20)
+                        health = min(100, health + 5)
+                        happiness = min(100, happiness + 5)
+                        selectedVideoRes = R.raw.pupbathing
+                        isLooping = true
+                        coroutineScope.launch {
+                            delay(30_000) // 30 seconds delay
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
+                    },
+                    modifier = Modifier.alpha(0.8f)
+                )
+
+                // Sitting icon action
+                PetOverlayIcon(
+                    painter = painterResource(id = R.drawable.baseline_chair_alt_24),
+                    onClick = {
+                        selectedVideoRes = R.raw.pupsitting
+                        health = min(100, health + 5)
+                        happiness = min(100, happiness + 5)
+                        isLooping = true
+                        coroutineScope.launch {
+                            delay(30_000) // 30 seconds delay
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
+                    },
+                    modifier = Modifier.alpha(0.8f)
+                )
+
+                // Bathing icon action
+                PetOverlayIcon(
+                    painter = painterResource(id = R.drawable.baseline_bathtub_24),
+                    onClick = {
+                        selectedVideoRes = R.raw.pupbathing
+                        hunger = min(100, hunger + 20)
+                        health = min(100, health + 5)
+                        happiness = min(100, happiness + 5)
+                        isLooping = true
+                        coroutineScope.launch {
+                            delay(30_000) // 30 seconds delay
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
+                    },
+                    modifier = Modifier.alpha(0.8f)
+                )
+            }
+
+            // Right-side icons
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
@@ -187,16 +289,17 @@ fun HomeScreen() {
                     .zIndex(1f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Walking icon
+                // Walking icon actions
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.baseline_directions_walk_24),
                     onClick = {
                         happiness = min(100, happiness + 10)
                         hunger = max(0, hunger - 5)
-                    }
+                    },
+                    modifier = Modifier.alpha(0.8f)
                 )
 
-                // Feeding icon
+                // Eating icon actions
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.baseline_restaurant_24),
                     onClick = {
@@ -205,24 +308,45 @@ fun HomeScreen() {
                             health = min(100, health + 5)
                             lastClickTime = System.currentTimeMillis()
                         }
+                        selectedVideoRes = R.raw.pupeating
+                        isLooping = true
+                        coroutineScope.launch {
+                            delay(30_000) // 30 seconds delay
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
                     },
                     modifier = Modifier.alpha(if (isClickable) 1f else 0.5f)
                 )
 
-                // Play icon
+                // Playing icon actions
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.baseline_sports_basketball_24),
                     onClick = {
                         happiness = min(100, happiness + 5)
                         hunger = max(0, hunger - 3)
+                        selectedVideoRes = R.raw.pupplaying
+                        isLooping = true
+                        coroutineScope.launch {
+                            delay(30_000) // 30 seconds delay
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
                     }
                 )
 
-                // Medical icon
+                // Health icon actions
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.outline_local_hospital_24),
                     onClick = {
                         health = min(100, health + 20)
+                        selectedVideoRes = R.raw.pupvaccination
+                        isLooping = true
+                        coroutineScope.launch {
+                            delay(10_000) // 10 seconds delay
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
                     }
                 )
             }
@@ -253,6 +377,7 @@ fun HomeScreen() {
                     color = Color.Gray
                 )
             }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
