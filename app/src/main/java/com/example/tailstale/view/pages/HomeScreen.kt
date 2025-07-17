@@ -1,5 +1,5 @@
 package com.example.tailstale.view.pages
-
+import kotlinx.coroutines.CoroutineScope
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +41,8 @@ import com.example.tailstale.OverlayIconPainter
 import com.example.tailstale.R
 import com.example.tailstale.StatusBar
 import com.example.tailstale.VideoPlayerView
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen() {
@@ -56,6 +59,9 @@ fun HomeScreen() {
 // Video state
     var selectedVideoRes by remember { mutableStateOf(R.raw.sitting) }
     var isLooping by remember { mutableStateOf(true) }
+    val coroutineScope = rememberCoroutineScope()
+
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -141,7 +147,12 @@ fun HomeScreen() {
                     painter = painterResource(id = R.drawable.baseline_bed_24),
                     onClick = {
                         selectedVideoRes = R.raw.pupsleeping
-                        isLooping = true
+                        isLooping = false
+                        coroutineScope.launch {
+                            delay(60_000) // 1 minute
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
                     },
                     modifier = Modifier.alpha(0.8f)
                 )
@@ -152,7 +163,7 @@ fun HomeScreen() {
                 )
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_chair_alt_24),
-                    onClick = { selectedVideoRes = R.raw.pupsleeping },
+                    onClick = { selectedVideoRes = R.raw.pupsitting },
                     modifier = Modifier.alpha(0.8f)
                 )
                 OverlayIconPainter(
