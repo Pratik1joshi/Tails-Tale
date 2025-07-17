@@ -1,6 +1,7 @@
-package com.example.tailstale.view
+package com.example.tailstale
 
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -33,8 +34,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.tailstale.view.OnboardingStoryFlow
+import com.example.tailstale.view.LoginActivity
 import com.example.tailstale.view.pages.ActivitiesScreen
 import com.example.tailstale.view.pages.AddScreen
 import com.example.tailstale.view.pages.HomeScreen
@@ -55,18 +55,28 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VirtualPetApp() {
+
+    var selectedVideoRes by remember { mutableStateOf(R.raw.sitting) }
+    var isLooping by remember { mutableStateOf(true) }
+    val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Home", "Stats", "Add", "Activities", "Profile")
+    var showSettingsMenu by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
     val tabIcons = listOf(
         Icons.Default.Home,
-        Icons.Default.Settings,//baseline_bar_chart_24
+        painterResource(id = R.drawable.baseline_bar_chart_24),
         Icons.Default.Add,
-        Icons.Default.Star,//baseline_directions_run_24
+        painterResource(id = R.drawable.baseline_directions_run_24),
         Icons.Default.Person
     )
 
     Scaffold(
-        topBar = {
+
+
+
+                topBar = {
             TopAppBar(
                 title = {
                     Row(
@@ -92,8 +102,34 @@ fun VirtualPetApp() {
                             IconButton(onClick = { /* Notifications */ }) {
                                 Icon(Icons.Default.Notifications, contentDescription = "Notifications")
                             }
-                            IconButton(onClick = { /* Settings */ }) {
+                            IconButton(onClick = { showSettingsMenu = true }) {
                                 Icon(Icons.Default.Settings, contentDescription = "Settings")
+                                DropdownMenu(
+                                    expanded = showSettingsMenu,
+                                    onDismissRequest = { showSettingsMenu = false}
+                                ) {
+
+                                    DropdownMenuItem(
+                                        text = { Text("Dark Mode") },
+                                        onClick = {
+                                            // Handle dark mode toggle
+                                            showSettingsMenu = false
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Logout") },
+                                        onClick = {
+                                            // Handle logout logic
+                                            showSettingsMenu = false
+                                            showLogoutDialog = true
+
+
+
+                                        }
+                                    )
+
+
+                                }
                             }
                         }
                     }
@@ -111,11 +147,21 @@ fun VirtualPetApp() {
                 tabs.forEachIndexed { index, title ->
                     NavigationBarItem(
                         icon = {
-                            Icon(
-                                tabIcons[index],
-                                contentDescription = title,
-                                tint = if (selectedTab == index) Color(0xFF007AFF) else Color.Gray
-                            )
+                            when (val icon = tabIcons[index]) {
+                                is ImageVector -> Icon(
+                                    icon,
+                                    contentDescription = title,
+                                    tint = if (selectedTab == index) Color(0xFF007AFF) else Color.Gray
+                                )
+                                is Painter -> Image(
+                                    painter = icon,
+                                    contentDescription = title,
+                                    modifier = Modifier.size(24.dp),
+                                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                                        if (selectedTab == index) Color(0xFF007AFF) else Color.Gray
+                                    )
+                                )
+                            }
                         },
                         label = {
                             Text(
@@ -130,7 +176,9 @@ fun VirtualPetApp() {
                 }
             }
         }
-    ) { innerPadding ->
+    )
+
+    { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -144,6 +192,28 @@ fun VirtualPetApp() {
                 4 -> ProfileScreen()
             }
         }
+    }
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Confirm Logout") },
+            text = { Text("Are you sure you want to logout?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    val intent = Intent(context, LoginActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    context.startActivity(intent)
+                }) {
+                    Text("Logout")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -175,44 +245,31 @@ fun OverlayIconPainter(
     }
 }
 
+
 @Composable
-fun VideoPlayerView(modifier: Modifier = Modifier) {
+fun VideoPlayerView(
+    modifier: Modifier = Modifier,
+    videoRes: Int,
+    isLooping: Boolean,
+    onCompletion: () -> Unit
+) {
     val context = LocalContext.current
-
-    // Placeholder for video - replace with actual video file
-    Box(
-        modifier = modifier
-            .background(
-                Color(0xFFFFE0B2), // Light orange background as placeholder
-                RoundedCornerShape(16.dp)
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            "🐕\nVideo Player\n(Replace with actual video file)",
-            fontSize = 16.sp,
-            textAlign = TextAlign.Center,
-            color = Color.Gray
-        )
-    }
-
-    // Uncomment and modify this when you have a video file
-    /*
     AndroidView(
-        factory = { context ->
-            VideoView(context).apply {
-                setVideoURI(Uri.parse("android.resource://$packageName/${R.raw.your_video_file}"))
-                setOnPreparedListener { mediaPlayer ->
-                    mediaPlayer.isLooping = true
-                    start()
-                }
+        factory = { ctx ->
+            android.widget.VideoView(ctx).apply {
+                setVideoURI(android.net.Uri.parse("android.resource://${ctx.packageName}/$videoRes"))
+                setOnPreparedListener { it.isLooping = isLooping; start() }
+                setOnCompletionListener { onCompletion() }
             }
         },
-        modifier = modifier
+        modifier = modifier,
+        update = { view ->
+            view.setVideoURI(android.net.Uri.parse("android.resource://${context.packageName}/$videoRes"))
+            view.setOnPreparedListener { it.isLooping = isLooping; view.start() }
+            view.setOnCompletionListener { onCompletion() }
+        }
     )
-    */
 }
-
 @Composable
 fun OverlayIcon(
     icon: ImageVector,
@@ -290,10 +347,4 @@ fun VirtualPetTheme(content: @Composable () -> Unit) {
         ),
         content = content
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun MainPreview() {
-    MainActivity()
 }
