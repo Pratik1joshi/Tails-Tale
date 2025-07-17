@@ -59,6 +59,7 @@ fun VirtualPetApp() {
     val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Home", "Stats", "Add", "Activities", "Profile")
+    var showSettingsMenu by remember { mutableStateOf(false) }
     val tabIcons = listOf(
         Icons.Default.Home,
         painterResource(id = R.drawable.baseline_bar_chart_24),
@@ -94,8 +95,30 @@ fun VirtualPetApp() {
                             IconButton(onClick = { /* Notifications */ }) {
                                 Icon(Icons.Default.Notifications, contentDescription = "Notifications")
                             }
-                            IconButton(onClick = { /* Settings */ }) {
+                            IconButton(onClick = { showSettingsMenu = true }) {
                                 Icon(Icons.Default.Settings, contentDescription = "Settings")
+                                DropdownMenu(
+                                    expanded = showSettingsMenu,
+                                    onDismissRequest = { showSettingsMenu = false}
+                                ) {
+
+                                    DropdownMenuItem(
+                                        text = { Text("Dark Mode") },
+                                        onClick = {
+                                            // Handle dark mode toggle
+                                            showSettingsMenu = false
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Logout") },
+                                        onClick = {
+                                            // Handle logout logic
+                                            showSettingsMenu = false
+                                        }
+                                    )
+
+
+                                }
                             }
                         }
                     }
