@@ -190,6 +190,7 @@ fun HomeScreen() {
                               },
                     modifier = Modifier.alpha(0.8f)
                 )
+                // bathing icon action
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_bathtub_24),
                     onClick = { selectedVideoRes = R.raw.pupbathing
@@ -218,6 +219,7 @@ fun HomeScreen() {
                     .zIndex(1f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // walking icon actions
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_directions_walk_24),
                     onClick = {
@@ -226,6 +228,7 @@ fun HomeScreen() {
                     },
                     modifier = Modifier.alpha(0.8f)
                 )
+                // eating icon actions
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_restaurant_24),
                     onClick = {
@@ -234,20 +237,43 @@ fun HomeScreen() {
                             health = minOf(100, health + 5)
                             lastClickTime = System.currentTimeMillis()
                         }
+                        selectedVideoRes = R.raw.pupeating
+                        isLooping = true
+                        coroutineScope.launch {
+                            delay(30_000) // 30 seconds delay
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
                     },
                     modifier = Modifier.alpha(if (isClickable) 1f else 0.5f)
                 )
+                // playing icon actions
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.baseline_sports_basketball_24),
                     onClick = {
                         happiness = minOf(100, happiness + 5)
                         hunger = maxOf(0, hunger - 3)
+                        selectedVideoRes = R.raw.pupplaying
+                        isLooping = true
+                        coroutineScope.launch {
+                            delay(30_000) // 30 seconds delay
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
                     }
                 )
+                // health icon actions
                 OverlayIconPainter(
                     painter = painterResource(id = R.drawable.outline_local_hospital_24),
                     onClick = {
                         health = minOf(100, health + 20)
+                        selectedVideoRes = R.raw.pupvaccination
+                        isLooping = true
+                        coroutineScope.launch {
+                            delay(10_000) // 10 seconds delay
+                            selectedVideoRes = R.raw.sitting
+                            isLooping = true
+                        }
                     }
                 )
             }
