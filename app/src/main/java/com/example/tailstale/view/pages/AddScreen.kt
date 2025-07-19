@@ -77,6 +77,15 @@ fun AddScreen() {
     var showSuccessDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
+    // Get theme colors for dark mode support
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    val onBackgroundColor = MaterialTheme.colorScheme.onBackground
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val errorColor = MaterialTheme.colorScheme.error
+    val outlineColor = MaterialTheme.colorScheme.outline
+
     // Validation states
     val isNameValid = petName.isNotBlank() && petName.length >= 2
     val isAgeValid = petAge.isNotBlank() && petAge.toIntOrNull() != null && petAge.toInt() in 1..30
@@ -85,7 +94,7 @@ fun AddScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(backgroundColor) // Dynamic background
     ) {
         Column(
             modifier = Modifier
@@ -96,7 +105,7 @@ fun AddScreen() {
             // Header
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = surfaceColor), // Dynamic surface color
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
@@ -107,19 +116,19 @@ fun AddScreen() {
                         Icons.Default.Add,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
-                        tint = Color(0xFF007AFF)
+                        tint = primaryColor // Dynamic primary color
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "Add New Pet",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = onSurfaceColor // Dynamic text color
                     )
                     Text(
                         "Create your virtual companion",
                         fontSize = 14.sp,
-                        color = Color.Gray
+                        color = onSurfaceColor.copy(alpha = 0.7f) // Secondary text color
                     )
                 }
             }
@@ -129,28 +138,39 @@ fun AddScreen() {
             // Pet Name Section
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = surfaceColor) // Dynamic surface color
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         "Pet Name",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.Black
+                        color = onSurfaceColor // Dynamic text color
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = petName,
                         onValueChange = { petName = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Enter your pet's name") },
+                        placeholder = {
+                            Text(
+                                "Enter your pet's name",
+                                color = onSurfaceColor.copy(alpha = 0.6f) // Dynamic placeholder color
+                            )
+                        },
                         isError = petName.isNotBlank() && !isNameValid,
                         supportingText = {
                             if (petName.isNotBlank() && !isNameValid) {
-                                Text("Name must be at least 2 characters", color = Color.Red)
+                                Text("Name must be at least 2 characters", color = errorColor)
                             }
                         },
-                        singleLine = true
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = onSurfaceColor,
+                            unfocusedTextColor = onSurfaceColor,
+                            focusedBorderColor = primaryColor,
+                            unfocusedBorderColor = outlineColor
+                        )
                     )
                 }
             }
@@ -160,14 +180,14 @@ fun AddScreen() {
             // Pet Type Section
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = surfaceColor) // Dynamic surface color
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         "Pet Type",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.Black
+                        color = onSurfaceColor // Dynamic text color
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     LazyRow(
@@ -189,14 +209,14 @@ fun AddScreen() {
             // Gender Section
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = surfaceColor) // Dynamic surface color
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         "Gender",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.Black
+                        color = onSurfaceColor // Dynamic text color
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
@@ -249,26 +269,28 @@ fun AddScreen() {
                     .height(56.dp),
                 enabled = isFormValid && !isLoading,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF007AFF),
-                    disabledContainerColor = Color.Gray
+                    containerColor = primaryColor, // Dynamic primary color
+                    disabledContainerColor = onSurfaceColor.copy(alpha = 0.3f) // Dynamic disabled color
                 )
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimary // Dynamic progress indicator color
                     )
                 } else {
                     Icon(
                         Icons.Default.Add,
                         contentDescription = null,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onPrimary // Dynamic icon color
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         "Create My Pet",
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary // Dynamic text color
                     )
                 }
             }
@@ -278,7 +300,7 @@ fun AddScreen() {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     errorMessage,
-                    color = Color.Red,
+                    color = errorColor, // Dynamic error color
                     fontSize = 14.sp,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
@@ -296,26 +318,31 @@ fun AddScreen() {
                     Text(
                         "Success!",
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4CAF50)
+                        color = Color(0xFF4CAF50) // Keep success color consistent
                     )
                 },
                 text = {
-                    Text("Your new pet has been created successfully!")
+                    Text(
+                        "Your new pet has been created successfully!",
+                        color = onSurfaceColor // Dynamic text color
+                    )
                 },
                 confirmButton = {
                     TextButton(
                         onClick = { showSuccessDialog = false }
                     ) {
-                        Text("OK", color = Color(0xFF007AFF))
+                        Text("OK", color = primaryColor) // Dynamic button color
                     }
                 },
                 icon = {
                     Icon(
                         Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = Color(0xFF4CAF50)
+                        tint = Color(0xFF4CAF50) // Keep success color consistent
                     )
-                }
+                },
+                containerColor = surfaceColor, // Dynamic dialog background
+                textContentColor = onSurfaceColor // Dynamic dialog text color
             )
         }
     }
@@ -327,14 +354,21 @@ fun PetTypeCard(
     isSelected: Boolean,
     onSelect: () -> Unit
 ) {
+    // Get theme colors
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
+    val outlineColor = MaterialTheme.colorScheme.outline
+
     Card(
         modifier = Modifier
             .width(80.dp)
             .clickable { onSelect() },
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFF007AFF) else Color.White
+            containerColor = if (isSelected) primaryColor else surfaceColor // Dynamic colors
         ),
-        border = if (isSelected) null else BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f))
+        border = if (isSelected) null else BorderStroke(1.dp, outlineColor.copy(alpha = 0.3f)) // Dynamic border
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -348,14 +382,12 @@ fun PetTypeCard(
             Text(
                 petType.displayName,
                 fontSize = 12.sp,
-                color = if (isSelected) Color.White else Color.Black,
+                color = if (isSelected) onPrimaryColor else onSurfaceColor, // Dynamic text color
                 fontWeight = FontWeight.Medium
             )
         }
     }
 }
-
-
 
 @Composable
 fun GenderOption(
@@ -364,13 +396,20 @@ fun GenderOption(
     onSelect: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Get theme colors
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
+    val outlineColor = MaterialTheme.colorScheme.outline
+
     Card(
         modifier = modifier
             .clickable { onSelect() },
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFF007AFF) else Color.White
+            containerColor = if (isSelected) primaryColor else surfaceColor // Dynamic colors
         ),
-        border = if (isSelected) null else BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f))
+        border = if (isSelected) null else BorderStroke(1.dp, outlineColor.copy(alpha = 0.3f)) // Dynamic border
     ) {
         Row(
             modifier = Modifier
@@ -382,14 +421,14 @@ fun GenderOption(
             Icon(
                 gender.icon,
                 contentDescription = null,
-                tint = if (isSelected) Color.White else Color.Gray,
+                tint = if (isSelected) onPrimaryColor else onSurfaceColor.copy(alpha = 0.7f), // Dynamic icon color
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 gender.displayName,
                 fontSize = 14.sp,
-                color = if (isSelected) Color.White else Color.Black,
+                color = if (isSelected) onPrimaryColor else onSurfaceColor, // Dynamic text color
                 fontWeight = FontWeight.Medium
             )
         }
