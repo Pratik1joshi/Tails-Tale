@@ -10,9 +10,7 @@ interface UserRepository {
     suspend fun getUserByEmail(email: String): Result<UserModel?>
     suspend fun updateUser(user: UserModel): Result<UserModel>
     suspend fun deleteUser(userId: String): Result<Boolean>
-    suspend fun updateCoins(userId: String, coins: Int): Result<Boolean>
-    suspend fun updateGems(userId: String, gems: Int): Result<Boolean>
-    suspend fun updateExperience(userId: String, experience: Int): Result<Boolean>
+    suspend fun updatePetCareStats(userId: String, stats: Map<String, Int>): Result<Boolean>
     suspend fun addAchievement(userId: String, achievement: Achievement): Result<Boolean>
     suspend fun updateLearningProgress(userId: String, progress: LearningProgress): Result<Boolean>
 }

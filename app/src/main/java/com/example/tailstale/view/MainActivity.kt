@@ -35,6 +35,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import com.example.tailstale.repo.UserRepositoryImpl
 import com.example.tailstale.view.LoginActivity
 import com.example.tailstale.view.pages.ActivitiesScreen
 import com.example.tailstale.view.pages.AddScreen
@@ -190,7 +191,9 @@ fun VirtualPetApp() {
                 1 -> StatsScreen()
                 2 -> AddScreen()
                 3 -> ActivitiesScreen()
-                4 -> ProfileScreen()
+                4 -> ProfileScreen(
+                    userRepository = UserRepositoryImpl() // Your existing implementation
+                )
             }
         }
     }

@@ -31,12 +31,30 @@ class PetViewModel(
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
 
+    // Add health service and new states
+    private val petHealthService = com.example.tailstale.service.PetHealthService(
+        com.example.tailstale.repo.DiseaseRepositoryImpl(),
+        com.example.tailstale.repo.VaccineRepositoryImpl()
+    )
+
+    private val _requiredVaccines = MutableLiveData<List<com.example.tailstale.model.VaccineModel>>()
+    val requiredVaccines: LiveData<List<com.example.tailstale.model.VaccineModel>> = _requiredVaccines
+
+    private val _overdueVaccines = MutableLiveData<List<com.example.tailstale.model.VaccineModel>>()
+    val overdueVaccines: LiveData<List<com.example.tailstale.model.VaccineModel>> = _overdueVaccines
+
+    private val _diseaseRisks = MutableLiveData<List<com.example.tailstale.service.DiseaseRiskAssessment>>()
+    val diseaseRisks: LiveData<List<com.example.tailstale.service.DiseaseRiskAssessment>> = _diseaseRisks
+
     fun createPet(name: String, petType: PetType, userId: String) {
         viewModelScope.launch {
             _loading.value = true
             val pet = PetModel(
                 name = name,
-                type = petType.name
+                type = petType.name,
+                age = 1, // Start at 1 month old
+                ageInRealDays = 0,
+                lastAgeUpdate = System.currentTimeMillis()
             )
 
             petRepository.createPet(pet).fold(
@@ -45,7 +63,6 @@ class PetViewModel(
                     userRepository.getUserById(userId).fold(
                         onSuccess = { user ->
                             user?.let {
-                                // Create a new user with updated pets list
                                 val updatedUser = it.copy(
                                     pets = it.pets + createdPet.id
                                 )
@@ -55,6 +72,7 @@ class PetViewModel(
                         onFailure = { }
                     )
                     _currentPet.value = createdPet
+                    updatePetHealth(createdPet) // Check initial health status
                     loadUserPets(userId)
                     _error.value = null
                 },
@@ -70,8 +88,41 @@ class PetViewModel(
         viewModelScope.launch {
             _loading.value = true
             petRepository.getPetsByUserId(userId).fold(
-                onSuccess = {
-                    _pets.value = it
+                onSuccess = { petList ->
+                    // Age up all pets and check for health issues
+                    val updatedPets = petList.map { pet ->
+                        val agedPet = petHealthService.ageUpPet(pet)
+
+                        // Check for random disease if pet aged up
+                        if (agedPet.age > pet.age) {
+                            val randomDisease = petHealthService.checkForRandomDisease(agedPet)
+                            randomDisease?.let { disease ->
+                                // Apply disease effects
+                                val affectedPet = agedPet.copy(
+                                    health = maxOf(0, agedPet.health - disease.healthImpact),
+                                    happiness = maxOf(0, agedPet.happiness - disease.happinessImpact),
+                                    diseaseHistory = agedPet.diseaseHistory + mapOf(
+                                        "diseaseName" to disease.name,
+                                        "severity" to disease.severity.name,
+                                        "diagnosedDate" to System.currentTimeMillis(),
+                                        "treatmentCost" to disease.treatmentCost,
+                                        "symptoms" to disease.symptoms
+                                    )
+                                )
+                                petRepository.updatePet(affectedPet)
+                                return@map affectedPet
+                            }
+                        }
+
+                        // Update pet age in repository if changed
+                        if (agedPet.age != pet.age) {
+                            petRepository.updatePet(agedPet)
+                        }
+
+                        agedPet
+                    }
+
+                    _pets.value = updatedPets
                     _error.value = null
                 },
                 onFailure = {
@@ -84,6 +135,59 @@ class PetViewModel(
 
     fun selectPet(pet: PetModel) {
         _currentPet.value = pet
+        updatePetHealth(pet)
+    }
+
+    /**
+     * Update pet health information including vaccines and disease risks
+     */
+    private fun updatePetHealth(pet: PetModel) {
+        viewModelScope.launch {
+            // Get required vaccines for current age
+            val required = petHealthService.getRequiredVaccines(pet)
+            _requiredVaccines.value = required
+
+            // Get overdue vaccines
+            val overdue = petHealthService.getOverdueVaccines(pet)
+            _overdueVaccines.value = overdue
+
+            // Calculate disease risks
+            val risks = petHealthService.calculateDiseaseRisk(pet)
+            _diseaseRisks.value = risks
+        }
+    }
+
+    /**
+     * Administer vaccine to pet
+     */
+    fun vaccinatePet(vaccineId: String, vaccineName: String) {
+        _currentPet.value?.let { pet ->
+            viewModelScope.launch {
+                val vaccineRecord = mapOf(
+                    "vaccineId" to vaccineId,
+                    "vaccineName" to vaccineName,
+                    "vaccineType" to vaccineName.split(" ").first(), // e.g., "DHPP" from "DHPP First Dose"
+                    "dateAdministered" to System.currentTimeMillis(),
+                    "nextDueDate" to System.currentTimeMillis() + (365L * 24 * 60 * 60 * 1000) // 1 year later
+                )
+
+                val updatedPet = pet.copy(
+                    vaccineHistory = pet.vaccineHistory + vaccineRecord,
+                    health = minOf(100, pet.health + 5) // Small health boost from vaccination
+                )
+
+                petRepository.updatePet(updatedPet).fold(
+                    onSuccess = {
+                        _currentPet.value = updatedPet
+                        updatePetHealth(updatedPet) // Refresh health status
+                        _error.value = null
+                    },
+                    onFailure = {
+                        _error.value = it.message
+                    }
+                )
+            }
+        }
     }
 
     fun feedPet(foodId: String) {
@@ -198,45 +302,6 @@ class PetViewModel(
                             happiness = minOf(100, pet.happiness + 5),
                             lastCleaned = System.currentTimeMillis(),
                             careLog = pet.careLog + careActionMap
-                        )
-                        _currentPet.value = updatedPet
-                        _error.value = null
-                    },
-                    onFailure = {
-                        _error.value = it.message
-                    }
-                )
-            }
-        }
-    }
-
-    fun vaccinatePet(vaccineId: String) {
-        _currentPet.value?.let { pet ->
-            viewModelScope.launch {
-                val vaccineRecord = VaccineRecord(
-                    vaccine = VaccineModel(
-                        name = "Sample Vaccine",
-                        description = "Sample Description",
-                        targetDisease = "Sample Disease",
-                        effectiveDurationDays = 365,
-                        cost = 50,
-                        compatiblePetTypes = setOf(PetType.valueOf(pet.type))
-                    )
-                )
-
-                val vaccineRecordMap: Map<String, Any> = mapOf(
-                    "vaccineName" to vaccineRecord.vaccine.name,
-                    "description" to vaccineRecord.vaccine.description,
-                    "targetDisease" to vaccineRecord.vaccine.targetDisease,
-                    "effectiveDurationDays" to vaccineRecord.vaccine.effectiveDurationDays,
-                    "cost" to vaccineRecord.vaccine.cost,
-                    "dateAdministered" to vaccineRecord.dateAdministered
-                )
-
-                petRepository.addVaccineRecord(pet.id, vaccineRecord).fold(
-                    onSuccess = {
-                        val updatedPet = pet.copy(
-                            vaccineHistory = pet.vaccineHistory + vaccineRecordMap
                         )
                         _currentPet.value = updatedPet
                         _error.value = null

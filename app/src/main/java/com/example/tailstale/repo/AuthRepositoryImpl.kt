@@ -50,19 +50,21 @@ class AuthRepositoryImpl(
             }
             firebaseUser.updateProfile(profileUpdates).await()
 
-            // Create user in our database with complete data
+            // Create user in our database with complete data - removed game references
             val newUser = UserModel(
                 id = firebaseUser.uid,
                 username = displayName,
                 email = email,
                 displayName = displayName,
                 profileImageUrl = "",
-                coins = 100,
-                gems = 5,
-                level = 1,
-                experience = 0,
+                bio = "",
+                location = "",
                 lastLoginDate = System.currentTimeMillis(),
-                creationDate = System.currentTimeMillis()
+                creationDate = System.currentTimeMillis(),
+                pets = emptyList(),
+                achievements = emptyList(),
+                petCareStats = emptyMap(),
+                learningProgress = emptyMap()
             )
 
             // Save to Firebase Realtime Database
@@ -80,13 +82,21 @@ class AuthRepositoryImpl(
             val firebaseUser = authResult.user
 
             if (firebaseUser != null) {
-                // Create or get existing user
+                // Create or get existing user - removed game references
                 val user = UserModel(
                     id = firebaseUser.uid,
                     username = firebaseUser.displayName ?: firebaseUser.email?.substringBefore('@') ?: "",
                     email = firebaseUser.email ?: "",
                     displayName = firebaseUser.displayName ?: "",
-                    profileImageUrl = firebaseUser.photoUrl?.toString() ?: ""
+                    profileImageUrl = firebaseUser.photoUrl?.toString() ?: "",
+                    bio = "",
+                    location = "",
+                    lastLoginDate = System.currentTimeMillis(),
+                    creationDate = System.currentTimeMillis(),
+                    pets = emptyList(),
+                    achievements = emptyList(),
+                    petCareStats = emptyMap(),
+                    learningProgress = emptyMap()
                 )
 
                 // Save user to repository
@@ -186,15 +196,13 @@ class AuthRepositoryImpl(
                 email = email,
                 displayName = displayName,
                 profileImageUrl = "",
-                coins = 100,
-                gems = 5,
-                level = 1,
-                experience = 0,
+                bio = "",
+                location = "",
                 lastLoginDate = System.currentTimeMillis(),
                 creationDate = System.currentTimeMillis(),
                 pets = listOf(petModel.id),
                 achievements = emptyList(),
-                inventory = emptyMap(),
+                petCareStats = emptyMap(),
                 learningProgress = emptyMap()
             )
 
@@ -213,7 +221,15 @@ class AuthRepositoryImpl(
             username = firebaseUser.email?.substringBefore('@') ?: firebaseUser.uid,
             email = firebaseUser.email ?: "",
             displayName = firebaseUser.displayName ?: firebaseUser.email?.substringBefore('@') ?: "",
-            profileImageUrl = firebaseUser.photoUrl?.toString() ?: ""
+            profileImageUrl = firebaseUser.photoUrl?.toString() ?: "",
+            bio = "",
+            location = "",
+            lastLoginDate = System.currentTimeMillis(),
+            creationDate = System.currentTimeMillis(),
+            pets = emptyList(),
+            achievements = emptyList(),
+            petCareStats = emptyMap(),
+            learningProgress = emptyMap()
         )
     }
 }

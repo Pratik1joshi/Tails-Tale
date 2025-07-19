@@ -77,64 +77,6 @@ class UserViewModel(
         }
     }
 
-    fun addCoins(amount: Int) {
-        _currentUser.value?.let { user ->
-            viewModelScope.launch {
-                val newCoins = user.coins + amount
-                userRepository.updateCoins(user.id, newCoins).fold(
-                    onSuccess = {
-                        _currentUser.value = user.copy(coins = newCoins)
-                        _error.value = null
-                    },
-                    onFailure = {
-                        _error.value = it.message
-                    }
-                )
-            }
-        }
-    }
-
-    fun spendCoins(amount: Int): Boolean {
-        return _currentUser.value?.let { user ->
-            if (user.coins >= amount) {
-                viewModelScope.launch {
-                    val newCoins = user.coins - amount
-                    userRepository.updateCoins(user.id, newCoins).fold(
-                        onSuccess = {
-                            _currentUser.value = user.copy(coins = newCoins)
-                            _error.value = null
-                        },
-                        onFailure = {
-                            _error.value = it.message
-                        }
-                    )
-                }
-                true
-            } else {
-                _error.value = "Not enough coins!"
-                false
-            }
-        } ?: false
-    }
-
-    fun addExperience(amount: Int) {
-        _currentUser.value?.let { user ->
-            viewModelScope.launch {
-                val newExp = user.experience + amount
-                userRepository.updateExperience(user.id, newExp).fold(
-                    onSuccess = {
-                        val newLevel = (newExp / 100) + 1
-                        _currentUser.value = user.copy(experience = newExp, level = newLevel)
-                        _error.value = null
-                    },
-                    onFailure = {
-                        _error.value = it.message
-                    }
-                )
-            }
-        }
-    }
-
     fun clearError() {
         _error.value = null
     }

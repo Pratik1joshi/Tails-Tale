@@ -59,32 +59,9 @@ class UserRepositoryImpl : UserRepository {
         }
     }
 
-    override suspend fun updateCoins(userId: String, coins: Int): Result<Boolean> {
+    override suspend fun updatePetCareStats(userId: String, stats: Map<String, Int>): Result<Boolean> {
         return try {
-            database.child(userId).child("coins").setValue(coins).await()
-            Result.success(true)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun updateGems(userId: String, gems: Int): Result<Boolean> {
-        return try {
-            database.child(userId).child("gems").setValue(gems).await()
-            Result.success(true)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun updateExperience(userId: String, experience: Int): Result<Boolean> {
-        return try {
-            val newLevel = calculateLevel(experience)
-            val updates = mapOf(
-                "experience" to experience,
-                "level" to newLevel
-            )
-            database.child(userId).updateChildren(updates).await()
+            database.child(userId).child("petCareStats").setValue(stats).await()
             Result.success(true)
         } catch (e: Exception) {
             Result.failure(e)
@@ -112,9 +89,5 @@ class UserRepositoryImpl : UserRepository {
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
-
-    private fun calculateLevel(experience: Int): Int {
-        return (experience / 100) + 1
     }
 }
