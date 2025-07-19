@@ -63,6 +63,9 @@ dependencies {
     // WorkManager for notifications
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
+    // ADD THIS LINE: Process lifecycle for app state tracking
+    implementation(libs.androidx.lifecycle.process)
+
     // Additional dependencies that might help
     implementation("androidx.core:core:1.12.0")
     implementation("androidx.activity:activity-ktx:1.8.0")

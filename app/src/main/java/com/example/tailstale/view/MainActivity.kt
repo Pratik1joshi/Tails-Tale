@@ -37,6 +37,9 @@ import com.example.tailstale.view.pages.HomeScreen
 import com.example.tailstale.view.pages.ProfileScreen
 import com.example.tailstale.view.pages.StatsScreen
 import androidx.compose.foundation.isSystemInDarkTheme
+import com.example.tailstale.utils.AppLifecycleObserver
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.activity.compose.setContent
 
 class MainActivity : ComponentActivity() {
 
@@ -45,10 +48,8 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // Permission granted, notifications will work
             println("Notification permission granted")
         } else {
-            // Permission denied, handle accordingly
             println("Notification permission denied")
         }
     }
@@ -58,6 +59,9 @@ class MainActivity : ComponentActivity() {
 
         // Request notification permission for Android 13+
         requestNotificationPermission()
+        // Initialize lifecycle observer for inactivity tracking
+        val appLifecycleObserver = AppLifecycleObserver(applicationContext)
+        ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycleObserver)
 
         setContent {
             var isDarkTheme by remember { mutableStateOf(false) }
@@ -75,15 +79,12 @@ class MainActivity : ComponentActivity() {
                     this,
                     Manifest.permission.POST_NOTIFICATIONS
                 ) == PackageManager.PERMISSION_GRANTED -> {
-                    // Permission already granted
                     println("Notification permission already granted")
                 }
                 shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
-                    // Show rationale and request permission
                     showNotificationPermissionRationale()
                 }
                 else -> {
-                    // Request permission directly
                     requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
@@ -214,9 +215,7 @@ fun VirtualPetApp(onToggleTheme: () -> Unit) {
                 }
             }
         }
-    )
-
-    { innerPadding ->
+    ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -231,6 +230,7 @@ fun VirtualPetApp(onToggleTheme: () -> Unit) {
             }
         }
     }
+
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
@@ -255,8 +255,6 @@ fun VirtualPetApp(onToggleTheme: () -> Unit) {
     }
 }
 
-// Rest of your composables remain the same...
-
 @Composable
 fun OverlayIconPainter(
     painter: Painter,
@@ -266,7 +264,7 @@ fun OverlayIconPainter(
     Surface(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-        modifier = Modifier
+        modifier = modifier
             .size(48.dp)
             .clickable { onClick() }
     ) {

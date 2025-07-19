@@ -3,12 +3,14 @@ package com.example.tailstale.utils
 import android.content.Context
 import androidx.work.*
 import com.example.tailstale.workers.PetCareWorker
+import com.example.tailstale.workers.InactivityWorker
 import java.util.concurrent.TimeUnit
 
 class NotificationScheduler(private val context: Context) {
 
     companion object {
         const val PET_CARE_WORK = "pet_care_notification_work"
+        const val INACTIVITY_WORK = "inactivity_notification_work"
     }
 
     fun schedulePetCareReminders(health: Int, hunger: Int, happiness: Int) {
@@ -53,5 +55,28 @@ class NotificationScheduler(private val context: Context) {
             .build()
 
         WorkManager.getInstance(context).enqueue(workRequest)
+    }
+
+    // New method for scheduling inactivity notification
+    fun scheduleInactivityReminder() {
+        val workRequest = OneTimeWorkRequestBuilder<InactivityWorker>()
+            .setInitialDelay(5, TimeUnit.MINUTES) // 5 minutes delay
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+                    .build()
+            )
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            INACTIVITY_WORK,
+            ExistingWorkPolicy.REPLACE,
+            workRequest
+        )
+    }
+
+    // Method to cancel inactivity reminder (called when user returns to app)
+    fun cancelInactivityReminder() {
+        WorkManager.getInstance(context).cancelUniqueWork(INACTIVITY_WORK)
     }
 }
