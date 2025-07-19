@@ -34,6 +34,9 @@ import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneId
 import java.util.Date
+import androidx.compose.ui.viewinterop.AndroidView
+import android.widget.VideoView
+import android.net.Uri
 
 // Helper components for HomeScreen
 @Composable
@@ -41,25 +44,48 @@ private fun PetOverlayIcon(
     painter: Painter,
     onClick: () -> Unit,
     isEnabled: Boolean = true,
+    label: String = "", // Add label parameter
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        shape = CircleShape,
-        color = Color.Black.copy(alpha = if (isEnabled) 0.7f else 0.3f),
-        modifier = modifier
-            .size(48.dp)
-            .clickable(enabled = isEnabled) { onClick() }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxSize()
+        Surface(
+            shape = CircleShape,
+            color = Color.Black.copy(alpha = if (isEnabled) 0.7f else 0.3f),
+            modifier = modifier
+                .size(48.dp)
+                .clickable(enabled = isEnabled) { onClick() }
         ) {
-            Image(
-                painter = painter,
-                contentDescription = null,
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Image(
+                    painter = painter,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .alpha(if (isEnabled) 1f else 0.5f)
+                )
+            }
+        }
+
+        // Small label text
+        if (label.isNotEmpty()) {
+            Text(
+                text = label,
+                fontSize = 10.sp,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Medium,
                 modifier = Modifier
-                    .size(24.dp)
-                    .alpha(if (isEnabled) 1f else 0.5f)
+                    .background(
+                        Color.Black.copy(alpha = 0.6f),
+                        RoundedCornerShape(4.dp)
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
             )
         }
     }
@@ -68,26 +94,32 @@ private fun PetOverlayIcon(
 @Composable
 private fun PetVideoPlayer(
     modifier: Modifier = Modifier,
-    videoRes: Int = 0,
+    videoRes: Int = R.raw.sitting,
     isLooping: Boolean = true,
     onCompletion: () -> Unit = {}
 ) {
-    // Placeholder for video - replace with actual video player when you have video files
-    Box(
-        modifier = modifier
-            .background(
-                Color(0xFFFFE0B2),
-                RoundedCornerShape(16.dp)
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            "🐕\nVideo Player\n(Playing: ${if (videoRes != 0) "Video" else "Default"})",
-            fontSize = 16.sp,
-            textAlign = TextAlign.Center,
-            color = Color.Gray
-        )
-    }
+    val context = LocalContext.current
+    AndroidView(
+        factory = { ctx ->
+            VideoView(ctx).apply {
+                setVideoURI(Uri.parse("android.resource://${ctx.packageName}/$videoRes"))
+                setOnPreparedListener { mediaPlayer ->
+                    mediaPlayer.isLooping = isLooping
+                    start()
+                }
+                setOnCompletionListener { onCompletion() }
+            }
+        },
+        modifier = modifier.clip(RoundedCornerShape(16.dp)),
+        update = { view ->
+            view.setVideoURI(Uri.parse("android.resource://${context.packageName}/$videoRes"))
+            view.setOnPreparedListener { mediaPlayer ->
+                mediaPlayer.isLooping = isLooping
+                view.start()
+            }
+            view.setOnCompletionListener { onCompletion() }
+        }
+    )
 }
 
 @Composable
@@ -176,11 +208,6 @@ fun HomeScreen() {
     val loading by petViewModel.loading.collectAsState()
     val error by petViewModel.error.collectAsState()
 
-    // Use pet stats from currentPet or default values
-    val health = currentPet?.health ?: 85
-    val hunger = currentPet?.hunger ?: 40
-    val happiness = currentPet?.happiness ?: 70
-
     // Cooldown system - 10 seconds
     val cooldownMillis = 10_000L
     var lastClickTime by remember { mutableStateOf(0L) }
@@ -222,6 +249,13 @@ fun HomeScreen() {
         println("DEBUG: currentPet = ${currentPet?.name}")
         println("DEBUG: loading = $loading")
         println("DEBUG: error = $error")
+    }
+
+    // Debug logging for pet stats changes
+    LaunchedEffect(currentPet?.health, currentPet?.hunger, currentPet?.happiness) {
+        currentPet?.let { pet ->
+            println("DEBUG: Pet stats - Health: ${pet.health}, Hunger: ${pet.hunger}, Happiness: ${pet.happiness}, Energy: ${pet.energy}, Cleanliness: ${pet.cleanliness}")
+        }
     }
 
     // Function to handle action with cooldown
@@ -311,23 +345,27 @@ fun HomeScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Cooldown indicator
-        if (remainingCooldown > 0) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                CooldownIndicator(remainingCooldown)
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-        }
+        // Cooldown indicator - Hide this as requested
+        // if (remainingCooldown > 0) {
+        //     Row(
+        //         modifier = Modifier.fillMaxWidth(),
+        //         horizontalArrangement = Arrangement.Center
+        //     ) {
+        //         CooldownIndicator(remainingCooldown)
+        //     }
+        //     Spacer(modifier = Modifier.height(8.dp))
+        // }
 
-        // Status bars - Using actual pet stats
-        PetStatusBar("Health", health, Color(0xFF4CAF50))
+        // Status bars - Using direct pet stats that update dynamically
+        PetStatusBar("Health", currentPet?.health ?: 85, Color(0xFF4CAF50))
         Spacer(modifier = Modifier.height(8.dp))
-        PetStatusBar("Hunger", hunger, Color(0xFFFF5722))
+        PetStatusBar("Hunger", currentPet?.hunger ?: 40, Color(0xFFFF5722))
         Spacer(modifier = Modifier.height(8.dp))
-        PetStatusBar("Happiness", happiness, Color(0xFF2196F3))
+        PetStatusBar("Happiness", currentPet?.happiness ?: 70, Color(0xFF2196F3))
+        Spacer(modifier = Modifier.height(8.dp))
+        PetStatusBar("Energy", currentPet?.energy ?: 100, Color(0xFF9C27B0))
+        Spacer(modifier = Modifier.height(8.dp))
+        PetStatusBar("Cleanliness", currentPet?.cleanliness ?: 100, Color(0xFF00BCD4))
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -365,7 +403,8 @@ fun HomeScreen() {
                             // No specific pet action for sleeping
                         }
                     },
-                    isEnabled = isActionEnabled
+                    isEnabled = isActionEnabled,
+                    label = "Sleep"
                 )
 
                 // Washing icon actions
@@ -376,7 +415,8 @@ fun HomeScreen() {
                             petViewModel.cleanPet()
                         }
                     },
-                    isEnabled = isActionEnabled
+                    isEnabled = isActionEnabled,
+                    label = "Wash"
                 )
 
                 // Sitting icon action
@@ -387,7 +427,8 @@ fun HomeScreen() {
                             // No specific pet action for sitting
                         }
                     },
-                    isEnabled = isActionEnabled
+                    isEnabled = isActionEnabled,
+                    label = "Sit"
                 )
 
                 // Bathing icon action
@@ -398,7 +439,8 @@ fun HomeScreen() {
                             petViewModel.cleanPet()
                         }
                     },
-                    isEnabled = isActionEnabled
+                    isEnabled = isActionEnabled,
+                    label = "Bath"
                 )
             }
 
@@ -418,7 +460,8 @@ fun HomeScreen() {
                             petViewModel.playWithPet("walking")
                         }
                     },
-                    isEnabled = isActionEnabled
+                    isEnabled = isActionEnabled,
+                    label = "Walk"
                 )
 
                 // Eating icon actions
@@ -429,7 +472,8 @@ fun HomeScreen() {
                             petViewModel.feedPet("food")
                         }
                     },
-                    isEnabled = isActionEnabled
+                    isEnabled = isActionEnabled,
+                    label = "Eat"
                 )
 
                 // Playing icon actions
@@ -440,7 +484,8 @@ fun HomeScreen() {
                             petViewModel.playWithPet("ball")
                         }
                     },
-                    isEnabled = isActionEnabled
+                    isEnabled = isActionEnabled,
+                    label = "Play"
                 )
 
                 // Health icon actions
@@ -451,7 +496,8 @@ fun HomeScreen() {
                             // Health checkup action - could add to ViewModel later
                         }
                     },
-                    isEnabled = isActionEnabled
+                    isEnabled = isActionEnabled,
+                    label = "Health"
                 )
             }
         }

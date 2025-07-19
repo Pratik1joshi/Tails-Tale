@@ -97,6 +97,13 @@ fun ProfileScreen(
         }
     }
 
+    // Handle permission results
+    LaunchedEffect(permissionsState.allPermissionsGranted) {
+        if (permissionsState.allPermissionsGranted && showImagePicker) {
+            // Permissions granted, but dialog should handle the picker launch
+        }
+    }
+
     // Show loading screen while profile is being loaded
     if (!isInitialized && isLoading) {
         Box(
@@ -173,11 +180,8 @@ fun ProfileScreen(
                     isUploading = isUploading,
                     onEditProfile = { showEditDialog = true },
                     onImageClick = {
-                        if (permissionsState.allPermissionsGranted) {
-                            showImagePicker = true
-                        } else {
-                            permissionsState.launchMultiplePermissionRequest()
-                        }
+                        // Always show the image picker dialog - let it handle permissions
+                        showImagePicker = true
                     }
                 )
             }
@@ -257,6 +261,41 @@ fun ProfileScreen(
 
         // Error Snackbar
         errorMessage?.let { message ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (message.contains("success", ignoreCase = true))
+                        Color(0xFF4CAF50)
+                    else
+                        Color(0xFFFF5722)
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        if (message.contains("success", ignoreCase = true))
+                            Icons.Default.CheckCircle
+                        else
+                            Icons.Default.Error,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = message,
+                        color = Color.White,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+
             LaunchedEffect(message) {
                 kotlinx.coroutines.delay(5000)
                 profileViewModel.clearError()
@@ -464,36 +503,99 @@ fun PetCareStatsCard(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                "Pet Care Stats",
+                "Pet Care Actions",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Stats grid - Fixed: Access stats from petCareStats map
+            // Dynamic stats display
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 StatItem(
-                    label = "Feedings",
+                    label = "Fed",
                     value = (userModel.petCareStats["feedCount"] ?: 0).toString(),
                     icon = Icons.Default.Restaurant,
-                    onAdd = onFeedPet
+                    color = Color(0xFF4CAF50)
                 )
                 StatItem(
-                    label = "Playtime",
+                    label = "Played",
                     value = (userModel.petCareStats["playCount"] ?: 0).toString(),
                     icon = Icons.Default.Pets,
-                    onAdd = onPlayWithPet
+                    color = Color(0xFF2196F3)
                 )
                 StatItem(
-                    label = "Training",
+                    label = "Trained",
                     value = (userModel.petCareStats["trainingCount"] ?: 0).toString(),
                     icon = Icons.Default.School,
-                    onAdd = onTrainPet
+                    color = Color(0xFFFF9800)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Action buttons with descriptions
+            Text(
+                "Quick Actions",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.Black
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                ActionButton(
+                    icon = Icons.Default.Restaurant,
+                    label = "Feed",
+                    description = "Give food to your pet",
+                    color = Color(0xFF4CAF50),
+                    onClick = onFeedPet
+                )
+                ActionButton(
+                    icon = Icons.Default.SportsBaseball,
+                    label = "Play",
+                    description = "Play games together",
+                    color = Color(0xFF2196F3),
+                    onClick = onPlayWithPet
+                )
+                ActionButton(
+                    icon = Icons.Default.School,
+                    label = "Train",
+                    description = "Teach new tricks",
+                    color = Color(0xFFFF9800),
+                    onClick = onTrainPet
+                )
+            }
+
+            // Additional care actions
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                ActionButton(
+                    icon = Icons.Default.Bathtub,
+                    label = "Bathe",
+                    description = "Keep your pet clean",
+                    color = Color(0xFF9C27B0),
+                    onClick = { /* Handle bathing */ }
+                )
+                ActionButton(
+                    icon = Icons.Default.Bedtime,
+                    label = "Sleep",
+                    description = "Rest and recover",
+                    color = Color(0xFF607D8B),
+                    onClick = { /* Handle sleeping */ }
+                )
+                ActionButton(
+                    icon = Icons.Default.LocalHospital,
+                    label = "Health",
+                    description = "Medical checkup",
+                    color = Color(0xFFE91E63),
+                    onClick = { /* Handle health care */ }
                 )
             }
         }
@@ -505,7 +607,8 @@ fun StatItem(
     label: String,
     value: String,
     icon: ImageVector,
-    onAdd: () -> Unit = {}
+    onAdd: () -> Unit = {},
+    color: Color = Color(0xFF007AFF)
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
@@ -514,7 +617,7 @@ fun StatItem(
             icon,
             contentDescription = null,
             modifier = Modifier.size(24.dp),
-            tint = Color(0xFF007AFF)
+            tint = color
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -977,24 +1080,89 @@ fun ImagePickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("Select Image Source")
+            Text(
+                "Change Profile Picture",
+                fontWeight = FontWeight.Bold
+            )
         },
         text = {
-            Column {
-                Text("Choose an image source:")
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text("Choose how you'd like to update your profile picture:")
+
+                // Gallery option
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onGallery() },
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.PhotoLibrary,
+                            contentDescription = "Gallery",
+                            modifier = Modifier.size(24.dp),
+                            tint = Color(0xFF007AFF)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                "Choose from Gallery",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 16.sp
+                            )
+                            Text(
+                                "Select an existing photo",
+                                fontSize = 14.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+
+                // Camera option
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onCamera() },
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.CameraAlt,
+                            contentDescription = "Camera",
+                            modifier = Modifier.size(24.dp),
+                            tint = Color(0xFF007AFF)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                "Take a Photo",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 16.sp
+                            )
+                            Text(
+                                "Use your camera to take a new photo",
+                                fontSize = 14.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
             }
         },
-        confirmButton = {
-            Row {
-                TextButton(onClick = onGallery) {
-                    Text("Gallery")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                TextButton(onClick = onCamera) {
-                    Text("Camera")
-                }
-            }
-        },
+        confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
@@ -1049,4 +1217,56 @@ fun AddAchievementDialog(
             }
         }
     )
+}
+
+@Composable
+fun ActionButton(
+    icon: ImageVector,
+    label: String,
+    description: String,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(80.dp)
+    ) {
+        Button(
+            onClick = onClick,
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = color,
+                contentColor = Color.White
+            ),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
+            contentPadding = PaddingValues(0.dp)
+        ) {
+            Icon(
+                icon,
+                contentDescription = label,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color.Black,
+            textAlign = TextAlign.Center
+        )
+
+        Text(
+            text = description,
+            fontSize = 10.sp,
+            color = Color.Gray,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            lineHeight = 12.sp
+        )
+    }
 }

@@ -163,34 +163,48 @@ class ProfileViewModel(
             try {
                 isUploading = true
                 errorMessage = null
+                Log.d(TAG, "Starting image upload process...")
 
                 // Initialize Cloudinary if not already done
                 CloudinaryService.initialize(context)
+                Log.d(TAG, "Cloudinary initialized")
 
                 // Upload image to Cloudinary
+                Log.d(TAG, "Uploading image to Cloudinary...")
                 val imageUrl = cloudinaryService.uploadImage(imageUri, "profile_images")
-                Log.d(TAG, "Image uploaded to Cloudinary: $imageUrl")
+                Log.d(TAG, "Image uploaded to Cloudinary successfully: $imageUrl")
 
                 // Update user profile with new image URL
-                val currentUser = userProfile ?: return@launch
+                val currentUser = userProfile ?: run {
+                    Log.e(TAG, "No current user profile found")
+                    errorMessage = "No user profile found"
+                    return@launch
+                }
+
+                Log.d(TAG, "Updating user profile with new image URL...")
                 val updatedUser = currentUser.copy(profileImageUrl = imageUrl)
 
                 val result = userRepository.updateUser(updatedUser)
                 result.fold(
                     onSuccess = { user ->
                         userProfile = user
-                        Log.d(TAG, "Profile image updated successfully")
+                        Log.d(TAG, "Profile image updated successfully in database")
+                        // Clear any previous errors
+                        errorMessage = null
                     },
                     onFailure = { error ->
-                        errorMessage = "Failed to update profile image: ${error.message}"
-                        Log.e(TAG, "Error updating profile image", error)
+                        val errorMsg = "Failed to save profile image: ${error.message}"
+                        errorMessage = errorMsg
+                        Log.e(TAG, errorMsg, error)
                     }
                 )
             } catch (e: Exception) {
-                errorMessage = "Failed to upload image: ${e.message}"
+                val errorMsg = "Failed to upload image: ${e.message}"
+                errorMessage = errorMsg
                 Log.e(TAG, "Exception uploading image", e)
             } finally {
                 isUploading = false
+                Log.d(TAG, "Upload process completed")
             }
         }
     }
