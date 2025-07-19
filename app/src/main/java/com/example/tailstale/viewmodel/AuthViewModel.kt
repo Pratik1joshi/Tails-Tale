@@ -31,8 +31,14 @@ class AuthViewModel(
     private val _isSignedIn = MutableStateFlow(false)
     val isSignedIn: StateFlow<Boolean> = _isSignedIn
 
+    private val _shouldAutoLogin = MutableStateFlow(true)
+    val shouldAutoLogin: StateFlow<Boolean> = _shouldAutoLogin
+
     init {
-        checkCurrentUser()
+        // Only auto-check if we should auto-login
+        if (_shouldAutoLogin.value) {
+            checkCurrentUser()
+        }
     }
 
     private fun checkCurrentUser() {
@@ -41,7 +47,7 @@ class AuthViewModel(
             authRepository.getCurrentUser().fold(
                 onSuccess = {
                     _currentUser.value = it
-                    _isSignedIn.value = it != null
+                    _isSignedIn.value = it != null && _shouldAutoLogin.value
                     _error.value = null
                 },
                 onFailure = {
@@ -236,5 +242,15 @@ class AuthViewModel(
 
     fun setError(message: String) {
         _error.value = message
+    }
+
+    fun disableAutoLogin() {
+        _shouldAutoLogin.value = false
+        _isSignedIn.value = false
+    }
+
+    fun enableAutoLogin() {
+        _shouldAutoLogin.value = true
+        checkCurrentUser()
     }
 }

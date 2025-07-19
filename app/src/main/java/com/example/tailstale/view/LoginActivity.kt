@@ -90,6 +90,11 @@ fun LoginBody() {
     // Get view model
     val authViewModel: AuthViewModel = viewModel(factory = AppModule.provideViewModelFactory())
 
+    // Disable auto-login when LoginActivity is opened
+    LaunchedEffect(Unit) {
+        authViewModel.disableAutoLogin()
+    }
+
     // Observe state
     val loading by authViewModel.loading.collectAsState()
     val error by authViewModel.error.collectAsState()

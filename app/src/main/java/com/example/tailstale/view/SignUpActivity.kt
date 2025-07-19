@@ -93,6 +93,11 @@ fun SignupBody() {
     // Get view model
     val authViewModel: AuthViewModel = viewModel(factory = AppModule.provideViewModelFactory())
 
+    // Disable auto-login when SignUpActivity is opened
+    LaunchedEffect(Unit) {
+        authViewModel.disableAutoLogin()
+    }
+
     // Observe state
     val loading by authViewModel.loading.collectAsState()
     val error by authViewModel.error.collectAsState()
