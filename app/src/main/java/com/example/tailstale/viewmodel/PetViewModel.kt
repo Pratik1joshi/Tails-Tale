@@ -1,5 +1,6 @@
 package com.example.tailstale.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tailstale.model.CareAction
@@ -10,6 +11,7 @@ import com.example.tailstale.model.VaccineModel
 import com.example.tailstale.model.VaccineRecord
 import com.example.tailstale.repo.PetRepository
 import com.example.tailstale.repo.UserRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -31,6 +33,13 @@ class PetViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    // Add real-time aging service
+    private val petAgingService = com.example.tailstale.service.PetAgingService(petRepository)
+
+    // Add aging stats state
+    private val _petAgingStats = MutableStateFlow<Map<String, Any>>(emptyMap())
+    val petAgingStats: StateFlow<Map<String, Any>> = _petAgingStats
+
     // Add health service and new states
     private val petHealthService = com.example.tailstale.service.PetHealthService(
         com.example.tailstale.repo.DiseaseRepositoryImpl(),
@@ -46,6 +55,59 @@ class PetViewModel(
     private val _diseaseRisks = MutableStateFlow<List<com.example.tailstale.service.DiseaseRiskAssessment>>(emptyList())
     val diseaseRisks: StateFlow<List<com.example.tailstale.service.DiseaseRiskAssessment>> = _diseaseRisks
 
+    /**
+     * Start real-time aging for a user's pets
+     */
+    fun startRealTimeAging(userId: String) {
+        petAgingService.startRealTimeAging(userId)
+
+        // Also start a periodic refresh to update UI
+        viewModelScope.launch {
+            while (true) {
+                delay(60000) // Refresh every minute
+                refreshPetsData(userId)
+            }
+        }
+    }
+
+    /**
+     * Stop real-time aging
+     */
+    fun stopRealTimeAging() {
+        petAgingService.stopRealTimeAging()
+    }
+
+    /**
+     * Refresh pets data without full reload
+     */
+    private suspend fun refreshPetsData(userId: String) {
+        try {
+            petRepository.getPetsByUserId(userId).fold(
+                onSuccess = { petList ->
+                    _pets.value = petList
+                    // Update current pet if it's in the list
+                    _currentPet.value?.let { currentPet ->
+                        val updatedCurrentPet = petList.find { it.id == currentPet.id }
+                        if (updatedCurrentPet != null) {
+                            _currentPet.value = updatedCurrentPet
+                            updatePetAgingStats(updatedCurrentPet)
+                        }
+                    }
+                },
+                onFailure = { /* Silently fail to avoid spamming errors */ }
+            )
+        } catch (e: Exception) {
+            // Silently handle refresh errors
+        }
+    }
+
+    /**
+     * Update aging statistics for current pet
+     */
+    private fun updatePetAgingStats(pet: PetModel) {
+        _petAgingStats.value = petAgingService.getPetAgingStats(pet)
+    }
+
     fun createPet(name: String, petType: PetType, userId: String) {
         viewModelScope.launch {
             _loading.value = true
@@ -54,7 +116,8 @@ class PetViewModel(
                 type = petType.name,
                 age = 1, // Start at 1 month old
                 ageInRealDays = 0,
-                lastAgeUpdate = System.currentTimeMillis()
+                lastAgeUpdate = System.currentTimeMillis(),
+                lastStatsDecay = System.currentTimeMillis()
             )
 
             petRepository.createPet(pet).fold(
@@ -73,6 +136,7 @@ class PetViewModel(
                     )
                     _currentPet.value = createdPet
                     updatePetHealth(createdPet) // Check initial health status
+                    updatePetAgingStats(createdPet) // Initialize aging stats
                     loadUserPets(userId)
                     _error.value = null
                 },
@@ -89,9 +153,18 @@ class PetViewModel(
             _loading.value = true
             petRepository.getPetsByUserId(userId).fold(
                 onSuccess = { petList ->
-                    // Age up all pets and check for health issues
+                    // Process each pet through the aging service - NOW INCLUDES BACKGROUND DECAY
                     val updatedPets = petList.map { pet ->
-                        val agedPet = petHealthService.ageUpPet(pet)
+                        // Apply background decay and aging that happened while app was closed
+                        val agedPet = petAgingService.processPetAging(pet)
+
+                        // Update pet in repository if changed (background decay applied)
+                        if (agedPet != pet) {
+                            petRepository.updatePet(agedPet)
+                            Log.d("PetViewModel", "Applied background updates to ${pet.name}")
+                            Log.d("PetViewModel", "Before: H:${pet.hunger} E:${pet.energy} C:${pet.cleanliness} Ha:${pet.happiness} Age:${pet.age}")
+                            Log.d("PetViewModel", "After: H:${agedPet.hunger} E:${agedPet.energy} C:${agedPet.cleanliness} Ha:${agedPet.happiness} Age:${agedPet.age}")
+                        }
 
                         // Check for random disease if pet aged up
                         if (agedPet.age > pet.age) {
@@ -114,11 +187,6 @@ class PetViewModel(
                             }
                         }
 
-                        // Update pet age in repository if changed
-                        if (agedPet.age != pet.age) {
-                            petRepository.updatePet(agedPet)
-                        }
-
                         agedPet
                     }
 
@@ -126,6 +194,7 @@ class PetViewModel(
                     // Set current pet to first pet if none selected and pets exist
                     if (_currentPet.value == null && updatedPets.isNotEmpty()) {
                         _currentPet.value = updatedPets.first()
+                        updatePetAgingStats(updatedPets.first())
                     }
                     _error.value = null
                 },
@@ -140,6 +209,34 @@ class PetViewModel(
     fun selectPet(pet: PetModel) {
         _currentPet.value = pet
         updatePetHealth(pet)
+        updatePetAgingStats(pet)
+    }
+
+    /**
+     * Force update a specific pet's aging
+     */
+    fun forceAgePet(petId: String) {
+        viewModelScope.launch {
+            petAgingService.forceUpdatePet(petId).fold(
+                onSuccess = { updatedPet ->
+                    // Update the pet in our local state
+                    _pets.value = _pets.value.map {
+                        if (it.id == petId) updatedPet else it
+                    }
+
+                    // Update current pet if it's the one being aged
+                    if (_currentPet.value?.id == petId) {
+                        _currentPet.value = updatedPet
+                        updatePetAgingStats(updatedPet)
+                    }
+
+                    _error.value = "Pet ${updatedPet.name} aged successfully!"
+                },
+                onFailure = {
+                    _error.value = "Failed to age pet: ${it.message}"
+                }
+            )
+        }
     }
 
     /**
@@ -320,5 +417,50 @@ class PetViewModel(
 
     fun clearError() {
         _error.value = null
+    }
+    /**
+     * Direct stats update method for immediate UI feedback
+     */
+    fun updatePetStatsDirect(petId: String, statsUpdate: Map<String, Any>) {
+        viewModelScope.launch {
+            try {
+                // Update in repository first
+                petRepository.updatePetStats(petId, statsUpdate).fold(
+                    onSuccess = {
+                        // Update local state immediately for responsive UI
+                        _currentPet.value?.let { currentPet ->
+                            if (currentPet.id == petId) {
+                                val updatedPet = currentPet.copy(
+                                    health = (statsUpdate["health"] as? Int) ?: currentPet.health,
+                                    hunger = (statsUpdate["hunger"] as? Int) ?: currentPet.hunger,
+                                    happiness = (statsUpdate["happiness"] as? Int) ?: currentPet.happiness,
+                                    energy = (statsUpdate["energy"] as? Int) ?: currentPet.energy,
+                                    cleanliness = (statsUpdate["cleanliness"] as? Int) ?: currentPet.cleanliness,
+                                    lastFed = (statsUpdate["lastFed"] as? Long) ?: currentPet.lastFed,
+                                    lastPlayed = (statsUpdate["lastPlayed"] as? Long) ?: currentPet.lastPlayed,
+                                    lastCleaned = (statsUpdate["lastCleaned"] as? Long) ?: currentPet.lastCleaned,
+                                    lastStatsDecay = (statsUpdate["lastStatsDecay"] as? Long) ?: currentPet.lastStatsDecay
+                                )
+                                _currentPet.value = updatedPet
+
+                                // Also update in pets list
+                                _pets.value = _pets.value.map { pet ->
+                                    if (pet.id == petId) updatedPet else pet
+                                }
+
+                                // Update aging stats
+                                updatePetAgingStats(updatedPet)
+                            }
+                        }
+                        _error.value = null
+                    },
+                    onFailure = { exception ->
+                        _error.value = "Failed to update pet stats: ${exception.message}"
+                    }
+                )
+            } catch (e: Exception) {
+                _error.value = "Error updating pet stats: ${e.message}"
+            }
+        }
     }
 }
