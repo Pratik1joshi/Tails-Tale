@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,16 +31,22 @@ data class ActivityRecord(val activity: String, val date: Date)
 
 @Composable
 fun ActivitiesScreen() {
+    // Get theme colors for dark mode support
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val onBackgroundColor = MaterialTheme.colorScheme.onBackground
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+
     val activities = listOf(
         ActivityRecord("Playing", Date()),
         ActivityRecord("Sleeping", Date(System.currentTimeMillis() - 3600000L)),
         ActivityRecord("Sitting", Date(System.currentTimeMillis() - 7200000L))
     )
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5)),
+            .background(backgroundColor), // Dynamic background color
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -49,24 +56,28 @@ fun ActivitiesScreen() {
                 Icons.Default.Build,//baseline_directions_run_24
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
-                tint = Color.Gray
+                tint = onBackgroundColor // Dynamic icon color
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 "Activities",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = onBackgroundColor // Dynamic text color
             )
             Text(
                 "Track your pet's daily activities and achievements",
                 fontSize = 14.sp,
-                color = Color.Gray,
+                color = onBackgroundColor.copy(alpha = 0.7f), // Secondary text color with transparency
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Activity Records", fontWeight = FontWeight.Bold)
+                Text(
+                    "Activity Records",
+                    fontWeight = FontWeight.Bold,
+                    color = onBackgroundColor // Dynamic text color
+                )
                 val activities = listOf(
                     ActivityRecord("Playing", Date()),
                     ActivityRecord("Sleeping", Date(System.currentTimeMillis() - 3600000L)),
@@ -79,7 +90,10 @@ fun ActivitiesScreen() {
                     ActivityRecord("Sitting", Date(System.currentTimeMillis() - 18000000L))
                 )
                 activities.forEach {
-                    Text("- ${it.activity}: ${dateFormat.format(it.date)}")
+                    Text(
+                        "- ${it.activity}: ${dateFormat.format(it.date)}",
+                        color = onBackgroundColor // Dynamic text color for activity items
+                    )
                 }
             }
         }
