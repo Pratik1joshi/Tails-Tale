@@ -22,9 +22,9 @@ data class PetModel(
     var lastPlayed: Long = System.currentTimeMillis(),
     var lastCleaned: Long = System.currentTimeMillis(),
     var lastAgeUpdate: Long = System.currentTimeMillis(), // Track last age update
-    val vaccineHistory: List<Map<String, Any>> = emptyList(), // Simple list of maps
-    val diseaseHistory: List<Map<String, Any>> = emptyList(), // Track diseases
-    val careLog: List<Map<String, Any>> = emptyList(), // Simple list of maps
+    val vaccineHistory: Map<String, Any> = emptyMap(), // Change to Map for Firebase compatibility
+    val diseaseHistory: Map<String, Any> = emptyMap(), // Change to Map for Firebase compatibility
+    val careLog: Map<String, Any> = emptyMap(), // Change to Map for Firebase compatibility
     var creationDate: Long = System.currentTimeMillis()
 ) {
     val growthStage: GrowthStage
@@ -55,9 +55,10 @@ data class PetModel(
 
     // Helper to check if pet has received a specific vaccine
     private fun hasVaccine(vaccineType: String): Boolean {
-        return vaccineHistory.any { vaccine ->
-            (vaccine["vaccineType"] as? String) == vaccineType
-        }
+        // Since vaccineHistory is now a Map<String, Any>, we need to check if the vaccine type exists as a key
+        // or if it's stored in a different way. For now, let's check if the vaccineType exists as a key or value
+        return vaccineHistory.containsKey(vaccineType) ||
+               vaccineHistory.values.any { it.toString().contains(vaccineType, ignoreCase = true) }
     }
 
     // Calculate how many real days should equal 1 pet month

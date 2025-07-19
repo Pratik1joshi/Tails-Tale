@@ -16,31 +16,39 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tailstale.R
+import com.example.tailstale.di.AppModule
+import com.example.tailstale.viewmodel.PetViewModel
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.max
-import kotlin.math.min
+import java.time.LocalDate
+import java.time.Period
+import java.time.ZoneId
+import java.util.Date
 
 // Helper components for HomeScreen
 @Composable
 private fun PetOverlayIcon(
     painter: Painter,
     onClick: () -> Unit,
+    isEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     Surface(
         shape = CircleShape,
-        color = Color.Black.copy(alpha = 0.7f),
+        color = Color.Black.copy(alpha = if (isEnabled) 0.7f else 0.3f),
         modifier = modifier
             .size(48.dp)
-            .clickable { onClick() }
+            .clickable(enabled = isEnabled) { onClick() }
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -49,7 +57,9 @@ private fun PetOverlayIcon(
             Image(
                 painter = painter,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier
+                    .size(24.dp)
+                    .alpha(if (isEnabled) 1f else 0.5f)
             )
         }
     }
@@ -117,21 +127,125 @@ private fun PetStatusBar(label: String, value: Int, color: Color) {
 }
 
 @Composable
-fun HomeScreen() {
-    var health by remember { mutableStateOf(85) }
-    var hunger by remember { mutableStateOf(40) }
-    var happiness by remember { mutableStateOf(70) }
-    var showPlayVideo by remember { mutableStateOf(false) }
+private fun CooldownIndicator(
+    remainingTime: Long,
+    modifier: Modifier = Modifier
+) {
+    if (remainingTime > 0) {
+        Box(
+            modifier = modifier
+                .background(
+                    Color.Red.copy(alpha = 0.8f),
+                    RoundedCornerShape(8.dp)
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "${remainingTime / 1000}s",
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
 
-    val cooldownMillis = 90_000L
+// Helper function to calculate pet age
+private fun calculatePetAge(creationDate: Long): String {
+    val petDate = Date(creationDate).toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+    val currentDate = LocalDate.now()
+    val period = Period.between(petDate, currentDate)
+
+    return when {
+        period.years > 0 -> "${period.years} year${if (period.years > 1) "s" else ""} old"
+        period.months > 0 -> "${period.months} month${if (period.months > 1) "s" else ""} old"
+        period.days > 0 -> "${period.days} day${if (period.days > 1) "s" else ""} old"
+        else -> "Newborn"
+    }
+}
+
+@Composable
+fun HomeScreen() {
+    val context = LocalContext.current
+    val petViewModel: PetViewModel = viewModel(factory = AppModule.provideViewModelFactory())
+
+    // Observe pet data with StateFlow collectAsState
+    val pets by petViewModel.pets.collectAsState()
+    val currentPet by petViewModel.currentPet.collectAsState()
+    val loading by petViewModel.loading.collectAsState()
+    val error by petViewModel.error.collectAsState()
+
+    // Use pet stats from currentPet or default values
+    val health = currentPet?.health ?: 85
+    val hunger = currentPet?.hunger ?: 40
+    val happiness = currentPet?.happiness ?: 70
+
+    // Cooldown system - 10 seconds
+    val cooldownMillis = 10_000L
     var lastClickTime by remember { mutableStateOf(0L) }
-    val currentTime = System.currentTimeMillis()
-    val isClickable = currentTime - lastClickTime > cooldownMillis
+    val coroutineScope = rememberCoroutineScope()
+
+    // Calculate remaining cooldown time
+    var remainingCooldown by remember { mutableStateOf(0L) }
+
+    LaunchedEffect(lastClickTime) {
+        while (true) {
+            val currentTime = System.currentTimeMillis()
+            val timeElapsed = currentTime - lastClickTime
+            remainingCooldown = maxOf(0L, cooldownMillis - timeElapsed)
+            if (remainingCooldown <= 0) break
+            delay(100) // Update every 100ms for smooth countdown
+        }
+    }
+
+    val isActionEnabled = remainingCooldown <= 0L
 
     // Video state
     var selectedVideoRes by remember { mutableStateOf(R.raw.sitting) }
     var isLooping by remember { mutableStateOf(true) }
-    val coroutineScope = rememberCoroutineScope()
+
+    // Load pets when component mounts
+    LaunchedEffect(Unit) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        currentUser?.let { user ->
+            println("DEBUG: Loading pets for user: ${user.uid}")
+            petViewModel.loadUserPets(user.uid)
+        } ?: run {
+            println("DEBUG: No current user found")
+        }
+    }
+
+    // Debug logging for state changes
+    LaunchedEffect(pets, currentPet, loading, error) {
+        println("DEBUG: pets.size = ${pets.size}")
+        println("DEBUG: currentPet = ${currentPet?.name}")
+        println("DEBUG: loading = $loading")
+        println("DEBUG: error = $error")
+    }
+
+    // Function to handle action with cooldown
+    fun performAction(
+        videoRes: Int,
+        onPetAction: () -> Unit = {}
+    ) {
+        if (isActionEnabled) {
+            lastClickTime = System.currentTimeMillis()
+
+            // Perform pet action
+            onPetAction()
+
+            // Play video
+            selectedVideoRes = videoRes
+            isLooping = false
+
+            coroutineScope.launch {
+                delay(10_000) // 10 seconds video duration
+                selectedVideoRes = R.raw.sitting
+                isLooping = true
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -140,7 +254,26 @@ fun HomeScreen() {
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        // Pet info header
+        // Loading state
+        if (loading) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+
+        // Error state - Fixed type inference
+        error?.let { errorMessage: String ->
+            Text(
+                text = "Error: $errorMessage",
+                color = Color.Red,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+
+        // Pet info header - Dynamic content with explicit null safety
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -148,7 +281,7 @@ fun HomeScreen() {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Buddy",
+                    text = currentPet?.name ?: "Loading...",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
@@ -159,7 +292,7 @@ fun HomeScreen() {
                     color = Color(0xFFFF9500)
                 ) {
                     Text(
-                        "Puppy",
+                        text = currentPet?.type ?: "Pet",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         color = Color.White,
                         fontSize = 12.sp
@@ -168,7 +301,9 @@ fun HomeScreen() {
             }
 
             Text(
-                "3 months old",
+                text = currentPet?.let { pet: com.example.tailstale.model.PetModel ->
+                    calculatePetAge(pet.creationDate)
+                } ?: "Unknown age",
                 fontSize = 14.sp,
                 color = Color.Gray
             )
@@ -176,7 +311,18 @@ fun HomeScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Status bars
+        // Cooldown indicator
+        if (remainingCooldown > 0) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CooldownIndicator(remainingCooldown)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        // Status bars - Using actual pet stats
         PetStatusBar("Health", health, Color(0xFF4CAF50))
         Spacer(modifier = Modifier.height(8.dp))
         PetStatusBar("Hunger", hunger, Color(0xFFFF5722))
@@ -215,69 +361,44 @@ fun HomeScreen() {
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.baseline_bed_24),
                     onClick = {
-                        health = min(100, health + 5)
-                        selectedVideoRes = R.raw.pupsleeping
-                        isLooping = true
-                        coroutineScope.launch {
-                            delay(30_000) // 30 seconds delay
-                            selectedVideoRes = R.raw.sitting
-                            isLooping = true
+                        performAction(videoRes = R.raw.pupsleeping) {
+                            // No specific pet action for sleeping
                         }
                     },
-                    modifier = Modifier.alpha(0.8f)
+                    isEnabled = isActionEnabled
                 )
 
                 // Washing icon actions
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.baseline_wash_24),
                     onClick = {
-                        hunger = min(100, hunger + 20)
-                        health = min(100, health + 5)
-                        happiness = min(100, happiness + 5)
-                        selectedVideoRes = R.raw.pupbathing
-                        isLooping = true
-                        coroutineScope.launch {
-                            delay(30_000) // 30 seconds delay
-                            selectedVideoRes = R.raw.sitting
-                            isLooping = true
+                        performAction(videoRes = R.raw.pupbathing) {
+                            petViewModel.cleanPet()
                         }
                     },
-                    modifier = Modifier.alpha(0.8f)
+                    isEnabled = isActionEnabled
                 )
 
                 // Sitting icon action
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.baseline_chair_alt_24),
                     onClick = {
-                        selectedVideoRes = R.raw.pupsitting
-                        health = min(100, health + 5)
-                        happiness = min(100, happiness + 5)
-                        isLooping = true
-                        coroutineScope.launch {
-                            delay(30_000) // 30 seconds delay
-                            selectedVideoRes = R.raw.sitting
-                            isLooping = true
+                        performAction(videoRes = R.raw.pupsitting) {
+                            // No specific pet action for sitting
                         }
                     },
-                    modifier = Modifier.alpha(0.8f)
+                    isEnabled = isActionEnabled
                 )
 
                 // Bathing icon action
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.baseline_bathtub_24),
                     onClick = {
-                        selectedVideoRes = R.raw.pupbathing
-                        hunger = min(100, hunger + 20)
-                        health = min(100, health + 5)
-                        happiness = min(100, happiness + 5)
-                        isLooping = true
-                        coroutineScope.launch {
-                            delay(30_000) // 30 seconds delay
-                            selectedVideoRes = R.raw.sitting
-                            isLooping = true
+                        performAction(videoRes = R.raw.pupbathing) {
+                            petViewModel.cleanPet()
                         }
                     },
-                    modifier = Modifier.alpha(0.8f)
+                    isEnabled = isActionEnabled
                 )
             }
 
@@ -293,61 +414,44 @@ fun HomeScreen() {
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.baseline_directions_walk_24),
                     onClick = {
-                        happiness = min(100, happiness + 10)
-                        hunger = max(0, hunger - 5)
+                        performAction(videoRes = R.raw.pupwalking) {
+                            petViewModel.playWithPet("walking")
+                        }
                     },
-                    modifier = Modifier.alpha(0.8f)
+                    isEnabled = isActionEnabled
                 )
 
                 // Eating icon actions
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.baseline_restaurant_24),
                     onClick = {
-                        if (isClickable) {
-                            hunger = min(100, hunger + 20)
-                            health = min(100, health + 5)
-                            lastClickTime = System.currentTimeMillis()
-                        }
-                        selectedVideoRes = R.raw.pupeating
-                        isLooping = true
-                        coroutineScope.launch {
-                            delay(30_000) // 30 seconds delay
-                            selectedVideoRes = R.raw.sitting
-                            isLooping = true
+                        performAction(videoRes = R.raw.pupeating) {
+                            petViewModel.feedPet("food")
                         }
                     },
-                    modifier = Modifier.alpha(if (isClickable) 1f else 0.5f)
+                    isEnabled = isActionEnabled
                 )
 
                 // Playing icon actions
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.baseline_sports_basketball_24),
                     onClick = {
-                        happiness = min(100, happiness + 5)
-                        hunger = max(0, hunger - 3)
-                        selectedVideoRes = R.raw.pupplaying
-                        isLooping = true
-                        coroutineScope.launch {
-                            delay(30_000) // 30 seconds delay
-                            selectedVideoRes = R.raw.sitting
-                            isLooping = true
+                        performAction(videoRes = R.raw.pupplaying) {
+                            petViewModel.playWithPet("ball")
                         }
-                    }
+                    },
+                    isEnabled = isActionEnabled
                 )
 
                 // Health icon actions
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.outline_local_hospital_24),
                     onClick = {
-                        health = min(100, health + 20)
-                        selectedVideoRes = R.raw.pupvaccination
-                        isLooping = true
-                        coroutineScope.launch {
-                            delay(10_000) // 10 seconds delay
-                            selectedVideoRes = R.raw.sitting
-                            isLooping = true
+                        performAction(videoRes = R.raw.pupvaccination) {
+                            // Health checkup action - could add to ViewModel later
                         }
-                    }
+                    },
+                    isEnabled = isActionEnabled
                 )
             }
         }
@@ -372,12 +476,14 @@ fun HomeScreen() {
                 Text(
                     "• Feed your pet regularly to maintain hunger levels\n" +
                             "• Play with your pet to increase happiness\n" +
-                            "• Regular exercise keeps your pet healthy",
+                            "• Regular exercise keeps your pet healthy\n" +
+                            "• Actions have a 10-second cooldown to simulate realistic pet care",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
             }
-            Spacer(modifier = Modifier.height(16.dp))
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }

@@ -178,18 +178,36 @@ class PetHealthService(
     }
 
     private fun shouldGetYearlyBooster(pet: PetModel, vaccineType: String): Boolean {
-        val lastVaccineDate = pet.vaccineHistory
-            .filter { (it["vaccineType"] as? String)?.contains(vaccineType) == true }
-            .maxByOrNull { it["dateAdministered"] as? Long ?: 0L }
-            ?.get("dateAdministered") as? Long ?: 0L
+        // Since vaccineHistory is now a Map<String, Any>, we need to check differently
+        // For now, let's implement a simple check based on the map structure
 
-        val monthsSinceLastVaccine = (System.currentTimeMillis() - lastVaccineDate) / (30L * 24 * 60 * 60 * 1000)
-        return monthsSinceLastVaccine >= 12 // Need yearly booster
+        // Check if the vaccine type exists in the history and when it was last administered
+        val lastVaccineKey = pet.vaccineHistory.keys.find { key ->
+            key.contains(vaccineType, ignoreCase = true)
+        }
+
+        if (lastVaccineKey != null) {
+            // Try to extract the date from the vaccine record
+            val vaccineData = pet.vaccineHistory[lastVaccineKey]
+            val lastVaccineDate = when (vaccineData) {
+                is Map<*, *> -> (vaccineData["dateAdministered"] as? Long) ?: 0L
+                is Long -> vaccineData // If the value itself is a timestamp
+                else -> 0L
+            }
+
+            val monthsSinceLastVaccine = (System.currentTimeMillis() - lastVaccineDate) / (30L * 24 * 60 * 60 * 1000)
+            return monthsSinceLastVaccine >= 12 // Need yearly booster
+        }
+
+        return true // If no vaccine found, booster is needed
     }
 
     private fun PetModel.hasReceivedVaccine(vaccineName: String): Boolean {
-        return vaccineHistory.any { vaccine ->
-            (vaccine["vaccineName"] as? String)?.contains(vaccineName.split(" ").first()) == true
+        // Check if the vaccine name exists in the vaccineHistory map
+        return vaccineHistory.keys.any { key ->
+            key.contains(vaccineName.split(" ").first(), ignoreCase = true)
+        } || vaccineHistory.values.any { value ->
+            value.toString().contains(vaccineName.split(" ").first(), ignoreCase = true)
         }
     }
 }

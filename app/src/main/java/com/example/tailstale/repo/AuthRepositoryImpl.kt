@@ -19,22 +19,30 @@ class AuthRepositoryImpl(
 
     override suspend fun signInWithEmail(email: String, password: String): Result<UserModel> {
         return try {
+            println("DEBUG: AuthRepository - signInWithEmail called for: $email")
             val authResult = auth.signInWithEmailAndPassword(email, password).await()
             val firebaseUser = authResult.user ?: throw Exception("Authentication failed")
+            println("DEBUG: AuthRepository - Firebase auth successful for: ${firebaseUser.uid}")
 
             // Try to get existing user data from database
             val userResult = userRepository.getUserByEmail(email)
             val user = userResult.getOrNull()
+            println("DEBUG: AuthRepository - User from database: ${user?.displayName}")
+            println("DEBUG: AuthRepository - User pets: ${user?.pets}")
 
             if (user != null) {
+                println("DEBUG: AuthRepository - Returning existing user")
                 Result.success(user)
             } else {
+                println("DEBUG: AuthRepository - Creating new user model")
                 // Create a new user model if not found in the database
                 val newUser = createUserModelFromFirebaseUser(firebaseUser)
                 userRepository.createUser(newUser).getOrThrow()
+                println("DEBUG: AuthRepository - New user created: ${newUser.displayName}")
                 Result.success(newUser)
             }
         } catch (e: Exception) {
+            println("DEBUG: AuthRepository - signInWithEmail failed: ${e.message}")
             Result.failure(e)
         }
     }
@@ -61,7 +69,7 @@ class AuthRepositoryImpl(
                 location = "",
                 lastLoginDate = System.currentTimeMillis(),
                 creationDate = System.currentTimeMillis(),
-                pets = emptyList(),
+                pets = emptyMap(), // Change to Map structure
                 achievements = emptyList(),
                 petCareStats = emptyMap(),
                 learningProgress = emptyMap()
@@ -93,7 +101,7 @@ class AuthRepositoryImpl(
                     location = "",
                     lastLoginDate = System.currentTimeMillis(),
                     creationDate = System.currentTimeMillis(),
-                    pets = emptyList(),
+                    pets = emptyMap(), // Change to Map structure
                     achievements = emptyList(),
                     petCareStats = emptyMap(),
                     learningProgress = emptyMap()
@@ -151,11 +159,23 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun getCurrentUser(): Result<UserModel?> {
-        val firebaseUser = auth.currentUser
-        return if (firebaseUser != null) {
-            userRepository.getUserById(firebaseUser.uid)
-        } else {
-            Result.success(null)
+        return try {
+            println("DEBUG: AuthRepository - getCurrentUser called")
+            val firebaseUser = auth.currentUser
+            if (firebaseUser != null) {
+                println("DEBUG: AuthRepository - Firebase user exists: ${firebaseUser.uid}")
+                val result = userRepository.getUserById(firebaseUser.uid)
+                val user = result.getOrNull()
+                println("DEBUG: AuthRepository - User from database: ${user?.displayName}")
+                println("DEBUG: AuthRepository - User pets: ${user?.pets}")
+                result
+            } else {
+                println("DEBUG: AuthRepository - No Firebase user found")
+                Result.success(null)
+            }
+        } catch (e: Exception) {
+            println("DEBUG: AuthRepository - getCurrentUser failed: ${e.message}")
+            Result.failure(e)
         }
     }
 
@@ -167,6 +187,7 @@ class AuthRepositoryImpl(
         petName: String
     ): Result<UserModel> {
         return try {
+            println("DEBUG: Starting signUpWithCompleteData")
             val authResult = auth.createUserWithEmailAndPassword(email, password).await()
             val firebaseUser = authResult.user ?: throw Exception("User creation failed")
 
@@ -181,15 +202,18 @@ class AuthRepositoryImpl(
                 name = petName,
                 type = petType
             )
+            println("DEBUG: Created pet model: ${petModel.name} with ID: ${petModel.id}")
 
             // Save pet to Firebase
             val petRepository = PetRepositoryImpl()
-            petRepository.createPet(petModel).getOrThrow()
+            val createdPet = petRepository.createPet(petModel).getOrThrow()
+            println("DEBUG: Saved pet to database: ${createdPet.id}")
 
-            // Only call linkPetToUser if it exists in your PetRepositoryImpl
-            // petRepository.linkPetToUser(firebaseUser.uid, petModel.id).getOrThrow()
+            // Link pet to user in userPets collection - this is crucial!
+            petRepository.linkPetToUser(firebaseUser.uid, createdPet.id).getOrThrow()
+            println("DEBUG: Linked pet ${createdPet.id} to user ${firebaseUser.uid}")
 
-            // Create complete user data with simple types only
+            // Create complete user data with the pet ID included
             val newUser = UserModel(
                 id = firebaseUser.uid,
                 username = displayName,
@@ -200,7 +224,7 @@ class AuthRepositoryImpl(
                 location = "",
                 lastLoginDate = System.currentTimeMillis(),
                 creationDate = System.currentTimeMillis(),
-                pets = listOf(petModel.id),
+                pets = mapOf(createdPet.id to true), // Change to Map structure
                 achievements = emptyList(),
                 petCareStats = emptyMap(),
                 learningProgress = emptyMap()
@@ -208,9 +232,11 @@ class AuthRepositoryImpl(
 
             // Save user to Firebase Realtime Database
             userRepository.createUser(newUser).getOrThrow()
+            println("DEBUG: Saved user to database with pets: ${newUser.pets}")
 
             Result.success(newUser)
         } catch (e: Exception) {
+            println("DEBUG: Error in signUpWithCompleteData: ${e.message}")
             Result.failure(e)
         }
     }
@@ -226,7 +252,7 @@ class AuthRepositoryImpl(
             location = "",
             lastLoginDate = System.currentTimeMillis(),
             creationDate = System.currentTimeMillis(),
-            pets = emptyList(),
+            pets = emptyMap(), // Change to Map structure
             achievements = emptyList(),
             petCareStats = emptyMap(),
             learningProgress = emptyMap()

@@ -70,8 +70,8 @@ class ProfileViewModel(
                         onSuccess = { user ->
                             userProfile = user
                             isInitialized = true
-                            // Load pets after loading user profile
-                            user?.let { loadUserPets(it.pets) }
+                            // Load pets using user ID instead of pet IDs
+                            loadUserPets(currentUser.uid)
                             Log.d(TAG, "Profile loaded successfully: ${user?.displayName}")
                         },
                         onFailure = { error ->
@@ -95,26 +95,25 @@ class ProfileViewModel(
     }
 
     /**
-     * Load pets data from pet IDs
+     * Load pets data using user ID (same approach as HomeScreen)
      */
-    private fun loadUserPets(petIds: List<String>) {
+    private fun loadUserPets(userId: String) {
         viewModelScope.launch {
             try {
-                val pets = mutableListOf<com.example.tailstale.model.PetModel>()
-                petIds.forEach { petId ->
-                    petRepository.getPetById(petId).fold(
-                        onSuccess = { pet ->
-                            pet?.let { pets.add(it) }
-                        },
-                        onFailure = { error ->
-                            Log.e(TAG, "Error loading pet $petId: ${error.message}")
-                        }
-                    )
-                }
-                userPets = pets
-                Log.d(TAG, "Loaded ${pets.size} pets")
+                Log.d(TAG, "Loading pets for user: $userId")
+                petRepository.getPetsByUserId(userId).fold(
+                    onSuccess = { pets ->
+                        userPets = pets
+                        Log.d(TAG, "Loaded ${pets.size} pets: ${pets.map { it.name }}")
+                    },
+                    onFailure = { error ->
+                        Log.e(TAG, "Error loading pets: ${error.message}")
+                        userPets = emptyList()
+                    }
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Exception loading pets", e)
+                userPets = emptyList()
             }
         }
     }
@@ -214,7 +213,7 @@ class ProfileViewModel(
                     location = "",
                     lastLoginDate = System.currentTimeMillis(),
                     creationDate = System.currentTimeMillis(),
-                    pets = emptyList(),
+                    pets = emptyMap(), // Change from emptyList() to emptyMap()
                     achievements = emptyList(),
                     petCareStats = emptyMap(),
                     learningProgress = emptyMap()
