@@ -1,10 +1,13 @@
 package com.example.tailstale
 
-
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,6 +29,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.core.content.ContextCompat
 import com.example.tailstale.view.LoginActivity
 import com.example.tailstale.view.pages.ActivitiesScreen
 import com.example.tailstale.view.pages.AddScreen
@@ -35,18 +39,61 @@ import com.example.tailstale.view.pages.StatsScreen
 import androidx.compose.foundation.isSystemInDarkTheme
 
 class MainActivity : ComponentActivity() {
+
+    // Permission launcher for notifications
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // Permission granted, notifications will work
+            println("Notification permission granted")
+        } else {
+            // Permission denied, handle accordingly
+            println("Notification permission denied")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
 
+        // Request notification permission for Android 13+
+        requestNotificationPermission()
+
+        setContent {
             var isDarkTheme by remember { mutableStateOf(false) }
 
             VirtualPetTheme(darkTheme = isDarkTheme) {
                 VirtualPetApp(onToggleTheme = { isDarkTheme = !isDarkTheme })
-
-
             }
         }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    // Permission already granted
+                    println("Notification permission already granted")
+                }
+                shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
+                    // Show rationale and request permission
+                    showNotificationPermissionRationale()
+                }
+                else -> {
+                    // Request permission directly
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+    }
+
+    private fun showNotificationPermissionRationale() {
+        // You can show a dialog explaining why you need notification permission
+        // For now, just request the permission
+        requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }
 
@@ -63,7 +110,6 @@ fun VirtualPetApp(onToggleTheme: () -> Unit) {
     var showLogoutDialog by remember { mutableStateOf(false) }
     var isDarkTheme by remember { mutableStateOf(false) }
 
-
     val tabIcons = listOf(
         Icons.Default.Home,
         painterResource(id = R.drawable.baseline_bar_chart_24),
@@ -73,9 +119,6 @@ fun VirtualPetApp(onToggleTheme: () -> Unit) {
     )
 
     Scaffold(
-
-
-
         topBar = {
             TopAppBar(
                 title = {
@@ -108,7 +151,6 @@ fun VirtualPetApp(onToggleTheme: () -> Unit) {
                                     expanded = showSettingsMenu,
                                     onDismissRequest = { showSettingsMenu = false}
                                 ) {
-
                                     DropdownMenuItem(
                                         text = { Text("Dark Mode") },
                                         onClick = {
@@ -123,13 +165,8 @@ fun VirtualPetApp(onToggleTheme: () -> Unit) {
                                             // Handle logout logic
                                             showSettingsMenu = false
                                             showLogoutDialog = true
-
-
-
                                         }
                                     )
-
-
                                 }
                             }
                         }
@@ -218,8 +255,8 @@ fun VirtualPetApp(onToggleTheme: () -> Unit) {
     }
 }
 
+// Rest of your composables remain the same...
 
-// this is the overlay icon with a painter resource
 @Composable
 fun OverlayIconPainter(
     painter: Painter,
@@ -246,7 +283,6 @@ fun OverlayIconPainter(
     }
 }
 
-
 @Composable
 fun VideoPlayerView(
     modifier: Modifier = Modifier,
@@ -271,6 +307,7 @@ fun VideoPlayerView(
         }
     )
 }
+
 @Composable
 fun OverlayIcon(
     icon: ImageVector,
@@ -333,8 +370,6 @@ fun StatusBar(label: String, value: Int, color: Color) {
     }
 }
 
-// Other screen composables
-
 @Composable
 fun VirtualPetTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -348,5 +383,3 @@ fun VirtualPetTheme(
         content = content
     )
 }
-
-

@@ -40,7 +40,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -60,4 +59,11 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview:1.5.4")
     implementation("androidx.compose.material3:material3:1.1.2")
     implementation("androidx.activity:activity-compose:1.8.0")
+
+    // WorkManager for notifications
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Additional dependencies that might help
+    implementation("androidx.core:core:1.12.0")
+    implementation("androidx.activity:activity-ktx:1.8.0")
 }

@@ -44,6 +44,12 @@ import com.example.tailstale.StatusBar
 import com.example.tailstale.VideoPlayerView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import android.content.Context
+import androidx.compose.material3.Button
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.LaunchedEffect
+import com.example.tailstale.utils.NotificationHelper
+import com.example.tailstale.utils.NotificationScheduler
 
 @Composable
 fun HomeScreen() {
@@ -61,6 +67,13 @@ fun HomeScreen() {
     var selectedVideoRes by remember { mutableStateOf(R.raw.sitting) }
     var isLooping by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
+    // Test notification function - you can call this from anywhere
+
+    val context = LocalContext.current
+    val notificationHelper = remember { NotificationHelper(context) }
+    val notificationScheduler = remember { NotificationScheduler(context) }
+
+
 
 
     Column(
@@ -71,6 +84,20 @@ fun HomeScreen() {
             .verticalScroll(rememberScrollState())
 
     ) {
+        LaunchedEffect(health, hunger, happiness) {
+            // Schedule notifications based on current stats
+            if (hunger < 30 || health < 40 || happiness < 30) {
+                notificationScheduler.scheduleOneTimeReminder(
+                    delayMinutes = 5, // Remind after 5 minutes if stats are low
+                    health = health,
+                    hunger = hunger,
+                    happiness = happiness
+                )
+            }
+
+            // Schedule regular reminders
+            notificationScheduler.schedulePetCareReminders(health, hunger, happiness)
+        }
         // Pet info header
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -103,6 +130,16 @@ fun HomeScreen() {
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+//            Button(
+//                onClick = {
+//                    notificationHelper.sendCustomNotification(
+//                        "Test Notification",
+//                        "Your pet needs you! 🐾"
+//                    )
+//                }
+//            ) {
+//                Text("Test Notification")
+//            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -280,6 +317,7 @@ fun HomeScreen() {
             }
 
         }
+
 
         Spacer(modifier = Modifier.height(16.dp))
 
