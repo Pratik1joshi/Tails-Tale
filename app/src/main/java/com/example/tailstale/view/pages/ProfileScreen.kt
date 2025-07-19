@@ -233,6 +233,129 @@ fun ProfileScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
+
+            item {
+                // Debug Card - Remove this after testing
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "Debug Info",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFE65100)
+                        )
+
+                        Text(
+                            "Current Profile Image URL:",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Text(
+                            profile.profileImageUrl.ifEmpty { "No image URL set" },
+                            fontSize = 11.sp,
+                            color = Color.Gray,
+                            modifier = Modifier
+                                .background(Color(0xFFF5F5F5), RoundedCornerShape(4.dp))
+                                .padding(8.dp)
+                        )
+
+                        Button(
+                            onClick = {
+                                profileViewModel.setError("Test message: Current image URL is '${profile.profileImageUrl}'")
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFE65100)
+                            )
+                        ) {
+                            Text("Test Error Display")
+                        }
+
+                        Button(
+                            onClick = {
+                                // Test database save directly
+                                profileViewModel.updateProfile(
+                                    displayName = profile.displayName,
+                                    email = profile.email,
+                                    profileImageUrl = profile.profileImageUrl
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2196F3)
+                            )
+                        ) {
+                            Text("Test Database Save")
+                        }
+
+                        Button(
+                            onClick = {
+                                profileViewModel.setError("User ID: ${profile.id}")
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF9C27B0)
+                            )
+                        ) {
+                            Text("Show User ID")
+                        }
+
+                        Button(
+                            onClick = {
+                                // Test direct Firebase write
+                                profileViewModel.setError("Testing direct Firebase write...")
+                                com.google.firebase.database.FirebaseDatabase.getInstance()
+                                    .reference
+                                    .child("test")
+                                    .child("debug")
+                                    .setValue("Test write at ${System.currentTimeMillis()}")
+                                    .addOnSuccessListener {
+                                        profileViewModel.setError("SUCCESS: Direct Firebase write worked!")
+                                    }
+                                    .addOnFailureListener { error ->
+                                        profileViewModel.setError("FAILED: Direct Firebase write failed: ${error.message}")
+                                    }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFFF5722)
+                            )
+                        ) {
+                            Text("Test Firebase Write")
+                        }
+                    }
+                }
+            }
+
+            item {
+                // Account Actions Card
+                AccountActionsCard(
+                    onSignOut = { profileViewModel.signOut() },
+                    onRefresh = { profileViewModel.refreshProfile() }
+                )
+            }
+
+            item {
+                // App Version
+                Text(
+                    "Version 1.0.0",
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
 
         // Loading Overlay for updates

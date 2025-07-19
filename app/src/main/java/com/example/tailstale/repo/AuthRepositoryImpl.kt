@@ -24,18 +24,23 @@ class AuthRepositoryImpl(
             val firebaseUser = authResult.user ?: throw Exception("Authentication failed")
             println("DEBUG: AuthRepository - Firebase auth successful for: ${firebaseUser.uid}")
 
-            // Try to get existing user data from database
-            val userResult = userRepository.getUserByEmail(email)
+            // FIXED: Use getUserById instead of getUserByEmail to prevent data loss
+            // The UID is guaranteed to be consistent, email queries can sometimes fail
+            val userResult = userRepository.getUserById(firebaseUser.uid)
             val user = userResult.getOrNull()
             println("DEBUG: AuthRepository - User from database: ${user?.displayName}")
+            println("DEBUG: AuthRepository - User profile image URL: ${user?.profileImageUrl}")
             println("DEBUG: AuthRepository - User pets: ${user?.pets}")
 
             if (user != null) {
-                println("DEBUG: AuthRepository - Returning existing user")
-                Result.success(user)
+                println("DEBUG: AuthRepository - Returning existing user with preserved data")
+                // Update only the lastLoginDate to preserve all other data
+                val updatedUser = user.copy(lastLoginDate = System.currentTimeMillis())
+                userRepository.updateUser(updatedUser).getOrThrow()
+                Result.success(updatedUser)
             } else {
-                println("DEBUG: AuthRepository - Creating new user model")
-                // Create a new user model if not found in the database
+                println("DEBUG: AuthRepository - User truly doesn't exist, creating new user model")
+                // Only create new user if they truly don't exist in the database
                 val newUser = createUserModelFromFirebaseUser(firebaseUser)
                 userRepository.createUser(newUser).getOrThrow()
                 println("DEBUG: AuthRepository - New user created: ${newUser.displayName}")

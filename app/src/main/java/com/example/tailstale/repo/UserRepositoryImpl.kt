@@ -1,5 +1,6 @@
 package com.example.tailstale.repo
 
+import android.util.Log
 import com.example.tailstale.model.Achievement
 import com.example.tailstale.model.LearningProgress
 import com.example.tailstale.model.UserModel
@@ -43,9 +44,24 @@ class UserRepositoryImpl : UserRepository {
 
     override suspend fun updateUser(user: UserModel): Result<UserModel> {
         return try {
+            Log.d("UserRepository", "Attempting to update user in database...")
+            Log.d("UserRepository", "User ID: ${user.id}")
+            Log.d("UserRepository", "User profile image URL: ${user.profileImageUrl}")
+            Log.d("UserRepository", "User display name: ${user.displayName}")
+
             database.child(user.id).setValue(user).await()
+
+            Log.d("UserRepository", "User updated successfully in Firebase")
+
+            // Verify the save by reading it back
+            val verification = database.child(user.id).get().await()
+            val savedUser = verification.getValue<UserModel>()
+            Log.d("UserRepository", "Verification - Saved user profile image URL: ${savedUser?.profileImageUrl}")
+
             Result.success(user)
         } catch (e: Exception) {
+            Log.e("UserRepository", "Failed to update user in database", e)
+            Log.e("UserRepository", "Error details: ${e.message}")
             Result.failure(e)
         }
     }

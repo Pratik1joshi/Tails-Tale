@@ -65,20 +65,37 @@ class ProfileViewModel(
 
                 val currentUser = auth.currentUser
                 if (currentUser != null) {
+                    Log.d(TAG, "Loading profile for user: ${currentUser.uid}")
                     val result = userRepository.getUserById(currentUser.uid)
                     result.fold(
                         onSuccess = { user ->
-                            userProfile = user
-                            isInitialized = true
-                            // Load pets using user ID instead of pet IDs
-                            loadUserPets(currentUser.uid)
-                            Log.d(TAG, "Profile loaded successfully: ${user?.displayName}")
+                            if (user != null) {
+                                userProfile = user
+                                isInitialized = true
+                                // Load pets using user ID instead of pet IDs
+                                loadUserPets(currentUser.uid)
+                                Log.d(TAG, "Profile loaded successfully: ${user.displayName}")
+                                Log.d(TAG, "Profile image URL: ${user.profileImageUrl}")
+                            } else {
+                                Log.w(TAG, "User profile is null, creating default profile")
+                                createDefaultProfile()
+                            }
                         },
                         onFailure = { error ->
+                            Log.e(TAG, "Failed to load profile: ${error.message}")
                             errorMessage = "Failed to load profile: ${error.message}"
-                            Log.e(TAG, "Error loading profile", error)
-                            // Try to create a default profile if user doesn't exist
-                            createDefaultProfile()
+
+                            // FIXED: Don't automatically create default profile on failure
+                            // This was causing the image URL to be overwritten!
+                            // Only create default profile if the user truly doesn't exist
+                            if (error.message?.contains("not found") == true ||
+                                error.message?.contains("doesn't exist") == true) {
+                                Log.w(TAG, "User doesn't exist, creating default profile")
+                                createDefaultProfile()
+                            } else {
+                                Log.e(TAG, "Profile load failed but NOT creating default profile to avoid data loss")
+                                isInitialized = false
+                            }
                         }
                     )
                 } else {
@@ -182,26 +199,46 @@ class ProfileViewModel(
                 }
 
                 Log.d(TAG, "Updating user profile with new image URL...")
+                Log.d(TAG, "Current user ID: ${currentUser.id}")
+                Log.d(TAG, "New image URL: $imageUrl")
+
                 val updatedUser = currentUser.copy(profileImageUrl = imageUrl)
 
-                val result = userRepository.updateUser(updatedUser)
-                result.fold(
-                    onSuccess = { user ->
-                        userProfile = user
-                        Log.d(TAG, "Profile image updated successfully in database")
-                        // Clear any previous errors
-                        errorMessage = null
-                    },
-                    onFailure = { error ->
-                        val errorMsg = "Failed to save profile image: ${error.message}"
-                        errorMessage = errorMsg
-                        Log.e(TAG, errorMsg, error)
-                    }
-                )
+                // First update the local state immediately so user sees the change
+                userProfile = updatedUser
+                Log.d(TAG, "Local profile updated with new image")
+
+                // Then save to database with more detailed error handling
+                try {
+                    val result = userRepository.updateUser(updatedUser)
+                    result.fold(
+                        onSuccess = { user ->
+                            userProfile = user
+                            Log.d(TAG, "Profile image updated successfully in database")
+                            Log.d(TAG, "Saved user profile image URL: ${user.profileImageUrl}")
+                            // Show success message
+                            errorMessage = "SUCCESS: Profile image updated! URL saved to database."
+                        },
+                        onFailure = { error ->
+                            val errorMsg = "DATABASE SAVE FAILED: ${error.message}"
+                            errorMessage = errorMsg
+                            Log.e(TAG, errorMsg, error)
+                            // Revert local state on database failure
+                            userProfile = currentUser
+                        }
+                    )
+                } catch (dbException: Exception) {
+                    val errorMsg = "DATABASE EXCEPTION: ${dbException.message}"
+                    errorMessage = errorMsg
+                    Log.e(TAG, "Database save exception", dbException)
+                    // Revert local state on database failure
+                    userProfile = currentUser
+                }
             } catch (e: Exception) {
-                val errorMsg = "Failed to upload image: ${e.message}"
+                val errorMsg = "UPLOAD FAILED: ${e.message}"
                 errorMessage = errorMsg
                 Log.e(TAG, "Exception uploading image", e)
+                Log.e(TAG, "Stack trace: ", e)
             } finally {
                 isUploading = false
                 Log.d(TAG, "Upload process completed")
