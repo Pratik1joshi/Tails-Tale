@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,10 +34,16 @@ data class BathingRecord(val date: Date)
 
 @Composable
 fun StatsScreen() {
+    // Get colors from Material Theme to support dark mode
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val onBackgroundColor = MaterialTheme.colorScheme.onBackground
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5)),
+            .background(backgroundColor), // Dynamic background color
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -46,14 +53,14 @@ fun StatsScreen() {
                 Icons.Default.Star,//baseline_bar_chart_24
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
-                tint = Color.Gray
+                tint = onBackgroundColor // Dynamic icon color
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 "Stats Screen",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = onBackgroundColor // Dynamic text color
             )
             val vaccinations = listOf(
                 VaccinationRecord("Rabies", Date()),
@@ -71,49 +78,86 @@ fun StatsScreen() {
                 remember { SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()) }
 
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Vaccination Records", fontWeight = FontWeight.Bold)
+                Text(
+                    "Vaccination Records",
+                    fontWeight = FontWeight.Bold,
+                    color = onBackgroundColor // Dynamic text color
+                )
                 vaccinations.forEach {
-                    Text("- ${it.name}: ${dateFormat.format(it.date)}")
+                    Text(
+                        "- ${it.name}: ${dateFormat.format(it.date)}",
+                        color = onBackgroundColor // Dynamic text color
+                    )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Feeding Records", fontWeight = FontWeight.Bold)
+                Text(
+                    "Feeding Records",
+                    fontWeight = FontWeight.Bold,
+                    color = onBackgroundColor // Dynamic text color
+                )
                 feedings.forEachIndexed { idx, it ->
-                    Text("- Feeding #${idx + 1}: ${dateFormat.format(it.date)}")
+                    Text(
+                        "- Feeding #${idx + 1}: ${dateFormat.format(it.date)}",
+                        color = onBackgroundColor // Dynamic text color
+                    )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Bathing Records", fontWeight = FontWeight.Bold)
+                Text(
+                    "Bathing Records",
+                    fontWeight = FontWeight.Bold,
+                    color = onBackgroundColor // Dynamic text color
+                )
                 bathings.forEachIndexed { idx, it ->
-                    Text("- Bath #${idx + 1}: ${dateFormat.format(it.date)}")
-
-                }
-            }
-        }
-        @Composable
-        fun StatBar(label: String, value: Int, color: Color) {
-            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    Text("$value%", fontSize = 14.sp, color = Color.Gray)
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(12.dp)
-                        .background(Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(value / 100f)
-                            .height(12.dp)
-                            .background(color, RoundedCornerShape(6.dp))
+                    Text(
+                        "- Bath #${idx + 1}: ${dateFormat.format(it.date)}",
+                        color = onBackgroundColor // Dynamic text color
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun StatBar(label: String, value: Int, color: Color) {
+    // Get theme colors for dark mode support
+    val onBackgroundColor = MaterialTheme.colorScheme.onBackground
+    val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
+
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                label,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = onBackgroundColor // Dynamic text color
+            )
+            Text(
+                "$value%",
+                fontSize = 14.sp,
+                color = onBackgroundColor.copy(alpha = 0.7f) // Slightly transparent for secondary text
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(12.dp)
+                .background(
+                    surfaceVariantColor.copy(alpha = 0.3f),
+                    RoundedCornerShape(6.dp)
+                )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(value / 100f)
+                    .height(12.dp)
+                    .background(color, RoundedCornerShape(6.dp))
+            )
         }
     }
 }
