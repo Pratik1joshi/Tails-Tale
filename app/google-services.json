@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "27107909911",
+    "project_id": "tailstale-a804c",
+    "storage_bucket": "tailstale-a804c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:27107909911:android:d1888b7ec7a83d2eb01752",
+        "android_client_info": {
+          "package_name": "com.example.tailstale"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "27107909911-j8nkbdqdmra718f5p6nda3dn9fgbt21d.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9x1Ybz8Dmc9JmNn3De-o81WQUhgu_8Y8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "27107909911-j8nkbdqdmra718f5p6nda3dn9fgbt21d.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
