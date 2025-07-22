@@ -66,6 +66,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-database-ktx:20.3.0")
+    implementation("com.google.firebase:firebase-firestore-ktx:24.10.0")
 
 
     // Google Sign-in
@@ -75,4 +76,18 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
 
+    // Cloudinary for image upload and management
+    implementation("com.cloudinary:cloudinary-android:2.5.0")
+
+    // Image loading and caching
+    implementation("io.coil-kt:coil-compose:2.4.0")
+
+    // Permissions for camera and storage
+    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+
+    // Image picker
+    implementation("androidx.activity:activity-compose:1.8.0")
+
+    // Material Icons for Jetpack Compose
+    implementation("androidx.compose.material:material-icons-extended")
 }

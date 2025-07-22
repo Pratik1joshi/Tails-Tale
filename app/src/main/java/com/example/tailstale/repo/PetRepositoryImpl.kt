@@ -35,19 +35,54 @@ class PetRepositoryImpl : PetRepository {
 
     override suspend fun getPetsByUserId(userId: String): Result<List<PetModel>> {
         return try {
-            // Get user's pet IDs
-            val userPetsSnapshot = userPetsDatabase.child(userId).get().await()
-            val petIds = userPetsSnapshot.children.mapNotNull { it.key }
+            println("DEBUG: Starting getPetsByUserId for user: $userId")
 
-            // Get all pets for this user
+            // First, try to get pets from userPets collection
+            val userPetsSnapshot = userPetsDatabase.child(userId).get().await()
+            println("DEBUG: Got userPets snapshot, children count: ${userPetsSnapshot.childrenCount}")
+
+            val petIds = userPetsSnapshot.children.mapNotNull { it.key }
+            println("DEBUG: Pet IDs found: $petIds")
+
             val pets = mutableListOf<PetModel>()
-            for (petId in petIds) {
-                val petSnapshot = database.child(petId).get().await()
-                petSnapshot.getValue<PetModel>()?.let { pets.add(it) }
+
+            if (petIds.isNotEmpty()) {
+                // Get pets by their IDs from userPets collection
+                for (petId in petIds) {
+                    val petSnapshot = database.child(petId).get().await()
+                    petSnapshot.getValue<PetModel>()?.let {
+                        pets.add(it)
+                        println("DEBUG: Added pet: ${it.name}")
+                    }
+                }
+            } else {
+                println("DEBUG: No pet IDs found in userPets, checking all pets...")
+                // Fallback: Search all pets and find ones that belong to this user
+                val allPetsSnapshot = database.get().await()
+                println("DEBUG: All pets snapshot children count: ${allPetsSnapshot.childrenCount}")
+
+                for (petSnapshot in allPetsSnapshot.children) {
+                    val pet = petSnapshot.getValue<PetModel>()
+                    pet?.let {
+                        println("DEBUG: Found pet in all pets: ${it.name}")
+                        pets.add(it)
+                    }
+                }
+
+                // If we found pets this way, link them to the user for future queries
+                if (pets.isNotEmpty()) {
+                    for (pet in pets) {
+                        linkPetToUser(userId, pet.id)
+                        println("DEBUG: Linked pet ${pet.name} to user $userId")
+                    }
+                }
             }
 
+            println("DEBUG: Final pets count: ${pets.size}")
             Result.success(pets)
         } catch (e: Exception) {
+            println("DEBUG: Error in getPetsByUserId: ${e.message}")
+            println("DEBUG: Error stack trace: ${e.stackTrace.joinToString("\n")}")
             Result.failure(e)
         }
     }

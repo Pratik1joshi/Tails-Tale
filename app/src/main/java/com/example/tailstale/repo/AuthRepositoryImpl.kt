@@ -19,22 +19,35 @@ class AuthRepositoryImpl(
 
     override suspend fun signInWithEmail(email: String, password: String): Result<UserModel> {
         return try {
+            println("DEBUG: AuthRepository - signInWithEmail called for: $email")
             val authResult = auth.signInWithEmailAndPassword(email, password).await()
             val firebaseUser = authResult.user ?: throw Exception("Authentication failed")
+            println("DEBUG: AuthRepository - Firebase auth successful for: ${firebaseUser.uid}")
 
-            // Try to get existing user data from database
-            val userResult = userRepository.getUserByEmail(email)
+            // FIXED: Use getUserById instead of getUserByEmail to prevent data loss
+            // The UID is guaranteed to be consistent, email queries can sometimes fail
+            val userResult = userRepository.getUserById(firebaseUser.uid)
             val user = userResult.getOrNull()
+            println("DEBUG: AuthRepository - User from database: ${user?.displayName}")
+            println("DEBUG: AuthRepository - User profile image URL: ${user?.profileImageUrl}")
+            println("DEBUG: AuthRepository - User pets: ${user?.pets}")
 
             if (user != null) {
-                Result.success(user)
+                println("DEBUG: AuthRepository - Returning existing user with preserved data")
+                // Update only the lastLoginDate to preserve all other data
+                val updatedUser = user.copy(lastLoginDate = System.currentTimeMillis())
+                userRepository.updateUser(updatedUser).getOrThrow()
+                Result.success(updatedUser)
             } else {
-                // Create a new user model if not found in the database
+                println("DEBUG: AuthRepository - User truly doesn't exist, creating new user model")
+                // Only create new user if they truly don't exist in the database
                 val newUser = createUserModelFromFirebaseUser(firebaseUser)
                 userRepository.createUser(newUser).getOrThrow()
+                println("DEBUG: AuthRepository - New user created: ${newUser.displayName}")
                 Result.success(newUser)
             }
         } catch (e: Exception) {
+            println("DEBUG: AuthRepository - signInWithEmail failed: ${e.message}")
             Result.failure(e)
         }
     }
@@ -50,19 +63,21 @@ class AuthRepositoryImpl(
             }
             firebaseUser.updateProfile(profileUpdates).await()
 
-            // Create user in our database with complete data
+            // Create user in our database with complete data - removed game references
             val newUser = UserModel(
                 id = firebaseUser.uid,
                 username = displayName,
                 email = email,
                 displayName = displayName,
                 profileImageUrl = "",
-                coins = 100,
-                gems = 5,
-                level = 1,
-                experience = 0,
+                bio = "",
+                location = "",
                 lastLoginDate = System.currentTimeMillis(),
-                creationDate = System.currentTimeMillis()
+                creationDate = System.currentTimeMillis(),
+                pets = emptyMap(), // Change to Map structure
+                achievements = emptyList(),
+                petCareStats = emptyMap(),
+                learningProgress = emptyMap()
             )
 
             // Save to Firebase Realtime Database
@@ -80,13 +95,21 @@ class AuthRepositoryImpl(
             val firebaseUser = authResult.user
 
             if (firebaseUser != null) {
-                // Create or get existing user
+                // Create or get existing user - removed game references
                 val user = UserModel(
                     id = firebaseUser.uid,
                     username = firebaseUser.displayName ?: firebaseUser.email?.substringBefore('@') ?: "",
                     email = firebaseUser.email ?: "",
                     displayName = firebaseUser.displayName ?: "",
-                    profileImageUrl = firebaseUser.photoUrl?.toString() ?: ""
+                    profileImageUrl = firebaseUser.photoUrl?.toString() ?: "",
+                    bio = "",
+                    location = "",
+                    lastLoginDate = System.currentTimeMillis(),
+                    creationDate = System.currentTimeMillis(),
+                    pets = emptyMap(), // Change to Map structure
+                    achievements = emptyList(),
+                    petCareStats = emptyMap(),
+                    learningProgress = emptyMap()
                 )
 
                 // Save user to repository
@@ -141,11 +164,23 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun getCurrentUser(): Result<UserModel?> {
-        val firebaseUser = auth.currentUser
-        return if (firebaseUser != null) {
-            userRepository.getUserById(firebaseUser.uid)
-        } else {
-            Result.success(null)
+        return try {
+            println("DEBUG: AuthRepository - getCurrentUser called")
+            val firebaseUser = auth.currentUser
+            if (firebaseUser != null) {
+                println("DEBUG: AuthRepository - Firebase user exists: ${firebaseUser.uid}")
+                val result = userRepository.getUserById(firebaseUser.uid)
+                val user = result.getOrNull()
+                println("DEBUG: AuthRepository - User from database: ${user?.displayName}")
+                println("DEBUG: AuthRepository - User pets: ${user?.pets}")
+                result
+            } else {
+                println("DEBUG: AuthRepository - No Firebase user found")
+                Result.success(null)
+            }
+        } catch (e: Exception) {
+            println("DEBUG: AuthRepository - getCurrentUser failed: ${e.message}")
+            Result.failure(e)
         }
     }
 
@@ -157,6 +192,7 @@ class AuthRepositoryImpl(
         petName: String
     ): Result<UserModel> {
         return try {
+            println("DEBUG: Starting signUpWithCompleteData")
             val authResult = auth.createUserWithEmailAndPassword(email, password).await()
             val firebaseUser = authResult.user ?: throw Exception("User creation failed")
 
@@ -171,38 +207,41 @@ class AuthRepositoryImpl(
                 name = petName,
                 type = petType
             )
+            println("DEBUG: Created pet model: ${petModel.name} with ID: ${petModel.id}")
 
             // Save pet to Firebase
             val petRepository = PetRepositoryImpl()
-            petRepository.createPet(petModel).getOrThrow()
+            val createdPet = petRepository.createPet(petModel).getOrThrow()
+            println("DEBUG: Saved pet to database: ${createdPet.id}")
 
-            // Only call linkPetToUser if it exists in your PetRepositoryImpl
-            // petRepository.linkPetToUser(firebaseUser.uid, petModel.id).getOrThrow()
+            // Link pet to user in userPets collection - this is crucial!
+            petRepository.linkPetToUser(firebaseUser.uid, createdPet.id).getOrThrow()
+            println("DEBUG: Linked pet ${createdPet.id} to user ${firebaseUser.uid}")
 
-            // Create complete user data with simple types only
+            // Create complete user data with the pet ID included
             val newUser = UserModel(
                 id = firebaseUser.uid,
                 username = displayName,
                 email = email,
                 displayName = displayName,
                 profileImageUrl = "",
-                coins = 100,
-                gems = 5,
-                level = 1,
-                experience = 0,
+                bio = "",
+                location = "",
                 lastLoginDate = System.currentTimeMillis(),
                 creationDate = System.currentTimeMillis(),
-                pets = listOf(petModel.id),
+                pets = mapOf(createdPet.id to true), // Change to Map structure
                 achievements = emptyList(),
-                inventory = emptyMap(),
+                petCareStats = emptyMap(),
                 learningProgress = emptyMap()
             )
 
             // Save user to Firebase Realtime Database
             userRepository.createUser(newUser).getOrThrow()
+            println("DEBUG: Saved user to database with pets: ${newUser.pets}")
 
             Result.success(newUser)
         } catch (e: Exception) {
+            println("DEBUG: Error in signUpWithCompleteData: ${e.message}")
             Result.failure(e)
         }
     }
@@ -213,7 +252,15 @@ class AuthRepositoryImpl(
             username = firebaseUser.email?.substringBefore('@') ?: firebaseUser.uid,
             email = firebaseUser.email ?: "",
             displayName = firebaseUser.displayName ?: firebaseUser.email?.substringBefore('@') ?: "",
-            profileImageUrl = firebaseUser.photoUrl?.toString() ?: ""
+            profileImageUrl = firebaseUser.photoUrl?.toString() ?: "",
+            bio = "",
+            location = "",
+            lastLoginDate = System.currentTimeMillis(),
+            creationDate = System.currentTimeMillis(),
+            pets = emptyMap(), // Change to Map structure
+            achievements = emptyList(),
+            petCareStats = emptyMap(),
+            learningProgress = emptyMap()
         )
     }
 }

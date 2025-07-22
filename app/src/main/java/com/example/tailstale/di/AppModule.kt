@@ -49,4 +49,20 @@ object AppModule {
             }
         }
     }
+
+    fun providePetViewModelFactory(): ViewModelProvider.Factory {
+        return object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return when {
+                    modelClass.isAssignableFrom(PetViewModel::class.java) -> {
+                        PetViewModel(
+                            providePetRepository(),
+                            provideUserRepository()
+                        ) as T
+                    }
+                    else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+                }
+            }
+        }
+    }
 }
