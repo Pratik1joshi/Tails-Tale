@@ -43,42 +43,32 @@ class AuthViewModel(
 
     private fun checkCurrentUser() {
         viewModelScope.launch {
-            println("DEBUG: AuthViewModel - checkCurrentUser() called")
             _loading.value = true
             authRepository.getCurrentUser().fold(
                 onSuccess = { user ->
-                    println("DEBUG: AuthViewModel - getCurrentUser success: ${user?.displayName}")
-                    println("DEBUG: AuthViewModel - shouldAutoLogin: ${_shouldAutoLogin.value}")
                     _currentUser.value = user
                     _isSignedIn.value = user != null && _shouldAutoLogin.value
                     _error.value = null
-                    println("DEBUG: AuthViewModel - isSignedIn set to: ${_isSignedIn.value}")
                 },
                 onFailure = { exception ->
-                    println("DEBUG: AuthViewModel - getCurrentUser failed: ${exception.message}")
                     _error.value = exception.message
                     _isSignedIn.value = false
                 }
             )
             _loading.value = false
-            println("DEBUG: AuthViewModel - checkCurrentUser() completed")
         }
     }
 
     fun signInWithEmail(email: String, password: String) {
         viewModelScope.launch {
-            println("DEBUG: AuthViewModel - signInWithEmail called")
             _loading.value = true
             authRepository.signInWithEmail(email, password).fold(
                 onSuccess = { user ->
-                    println("DEBUG: AuthViewModel - signInWithEmail success: ${user.displayName}")
                     _currentUser.value = user
                     _isSignedIn.value = true
                     _error.value = null
-                    println("DEBUG: AuthViewModel - User signed in successfully")
                 },
                 onFailure = { exception ->
-                    println("DEBUG: AuthViewModel - signInWithEmail failed: ${exception.message}")
                     _error.value = exception.message
                     _isSignedIn.value = false
                 }

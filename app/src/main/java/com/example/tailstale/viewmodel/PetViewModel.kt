@@ -111,40 +111,52 @@ class PetViewModel(
     fun createPet(name: String, petType: PetType, userId: String) {
         viewModelScope.launch {
             _loading.value = true
-            val pet = PetModel(
-                name = name,
-                type = petType.name,
-                age = 1, // Start at 1 month old
-                ageInRealDays = 0,
-                lastAgeUpdate = System.currentTimeMillis(),
-                lastStatsDecay = System.currentTimeMillis()
-            )
+            _error.value = null // Clear any previous errors
 
-            petRepository.createPet(pet).fold(
-                onSuccess = { createdPet ->
-                    // Add pet to user's pet list
-                    userRepository.getUserById(userId).fold(
-                        onSuccess = { user ->
-                            user?.let {
-                                val updatedUser = it.copy(
-                                    pets = it.pets + mapOf(createdPet.id to true)
-                                )
-                                userRepository.updateUser(updatedUser)
-                            }
-                        },
-                        onFailure = { }
-                    )
-                    _currentPet.value = createdPet
-                    updatePetHealth(createdPet) // Check initial health status
-                    updatePetAgingStats(createdPet) // Initialize aging stats
-                    loadUserPets(userId)
-                    _error.value = null
-                },
-                onFailure = {
-                    _error.value = it.message
-                }
-            )
-            _loading.value = false
+            try {
+                val pet = PetModel(
+                    name = name,
+                    type = petType.name,
+                    age = 1, // Start at 1 month old
+                    ageInRealDays = 0,
+                    lastAgeUpdate = System.currentTimeMillis(),
+                    lastStatsDecay = System.currentTimeMillis()
+                )
+
+                // Create the pet first
+                petRepository.createPet(pet).fold(
+                    onSuccess = { createdPet ->
+                        // Link the pet to the user using the linkPetToUser method
+                        viewModelScope.launch {
+                            (petRepository as? com.example.tailstale.repo.PetRepositoryImpl)?.linkPetToUser(userId, createdPet.id)?.fold(
+                                onSuccess = {
+                                    // Successfully linked, now update UI state
+                                    _currentPet.value = createdPet
+                                    updatePetHealth(createdPet)
+                                    updatePetAgingStats(createdPet)
+
+                                    // Reload the user's pets to refresh the list
+                                    loadUserPets(userId)
+
+                                    _error.value = "Pet '${createdPet.name}' created successfully!"
+                                    _loading.value = false
+                                },
+                                onFailure = { linkError ->
+                                    _error.value = "Pet created but failed to link to user: ${linkError.message}"
+                                    _loading.value = false
+                                }
+                            )
+                        }
+                    },
+                    onFailure = { createError ->
+                        _error.value = "Failed to create pet: ${createError.message}"
+                        _loading.value = false
+                    }
+                )
+            } catch (e: Exception) {
+                _error.value = "Error creating pet: ${e.message}"
+                _loading.value = false
+            }
         }
     }
 

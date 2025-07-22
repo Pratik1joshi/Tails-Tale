@@ -63,7 +63,6 @@ fun SplashBody() {
 
     // Check authentication when splash loads
     LaunchedEffect(Unit) {
-        println("DEBUG: SplashActivity - Starting authentication check")
         authViewModel.enableAutoLogin()
         hasCheckedAuth = true
     }
@@ -71,20 +70,14 @@ fun SplashBody() {
     // Handle navigation based on auth state - only after we've checked
     LaunchedEffect(hasCheckedAuth, loading, isSignedIn, currentUser) {
         if (hasCheckedAuth && !loading) {
-            println("DEBUG: SplashActivity - Auth check complete")
-            println("DEBUG: isSignedIn = $isSignedIn")
-            println("DEBUG: currentUser = ${currentUser?.displayName}")
-
             delay(1000) // Show splash for 1 second minimum
 
             if (isSignedIn && currentUser != null) {
-                println("DEBUG: SplashActivity - Navigating to MainActivity")
                 // User is authenticated, go to MainActivity
                 val intent = Intent(context, MainActivity::class.java)
                 context.startActivity(intent)
                 activity?.finish()
             } else {
-                println("DEBUG: SplashActivity - Navigating to OnboardingActivity")
                 // User is not authenticated, go to onboarding
                 val intent = Intent(context, OnboardingActivity::class.java)
                 context.startActivity(intent)

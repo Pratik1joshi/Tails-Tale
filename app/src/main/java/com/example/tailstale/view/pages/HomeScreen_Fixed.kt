@@ -293,34 +293,15 @@ fun HomeScreen() {
     // NEW: Start real-time aging when screen loads
     LaunchedEffect(currentUser?.uid) {
         currentUser?.uid?.let { userId ->
-            println("DEBUG: Starting real-time aging for user: $userId")
             petViewModel.startRealTimeAging(userId) // Start aging service
             petViewModel.loadUserPets(userId)
-        } ?: run {
-            println("DEBUG: No current user found")
         }
     }
 
     // NEW: Stop aging when screen is disposed
     DisposableEffect(Unit) {
         onDispose {
-            println("DEBUG: Stopping real-time aging")
             petViewModel.stopRealTimeAging()
-        }
-    }
-
-    // Debug logging for state changes
-    LaunchedEffect(pets, currentPet, loading, error) {
-        println("DEBUG: pets.size = ${pets.size}")
-        println("DEBUG: currentPet = ${currentPet?.name}")
-        println("DEBUG: loading = $loading")
-        println("DEBUG: error = $error")
-    }
-
-    // Debug logging for pet stats changes
-    LaunchedEffect(currentPet?.health, currentPet?.hunger, currentPet?.happiness) {
-        currentPet?.let { pet ->
-            println("DEBUG: Pet stats - Health: ${pet.health}, Hunger: ${pet.hunger}, Happiness: ${pet.happiness}, Energy: ${pet.energy}, Cleanliness: ${pet.cleanliness}")
         }
     }
 
