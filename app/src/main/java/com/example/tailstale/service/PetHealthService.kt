@@ -96,30 +96,216 @@ class PetHealthService(
     }
 
     /**
-     * Randomly triggers diseases based on age and risk factors
+     * NEW: Get age-based disease warnings for the pet
      */
-    suspend fun checkForRandomDisease(pet: PetModel): DiseaseModel? {
-        val riskAssessments = calculateDiseaseRisk(pet)
+    suspend fun getAgeBasedDiseaseWarnings(pet: PetModel): List<DiseaseWarning> {
+        val petType = PetType.valueOf(pet.type)
+        val warnings = mutableListOf<DiseaseWarning>()
 
-        // Higher chance of disease if pet is very young, old, or unvaccinated
-        val diseaseChance = when {
-            pet.age < 6 -> 0.15 // Puppies are vulnerable
-            pet.age > 84 -> 0.20 // Senior dogs are vulnerable
-            pet.isVaccineOverdue -> 0.25 // Unvaccinated pets are at high risk
-            pet.health < 70 -> 0.10 // Already sick pets more susceptible
-            else -> 0.05 // Healthy adult dogs have low risk
-        }
+        // Get diseases the pet is vulnerable to at current age
+        val vulnerableDiseases = diseaseRepository.getVulnerableDiseasesForAge(petType, pet.age)
+            .getOrElse { emptyList() }
 
-        if (Random.nextFloat() < diseaseChance) {
-            // Pick a disease weighted by risk
-            val weightedDiseases = riskAssessments.filter { it.riskPercentage > 10 }
-            if (weightedDiseases.isNotEmpty()) {
-                val randomDisease = weightedDiseases.random()
-                return randomDisease.disease
+        for (disease in vulnerableDiseases) {
+            // Check if pet is protected by vaccination
+            val isProtected = diseaseRepository.isPetProtectedFromDisease(disease.id, pet.vaccineHistory)
+                .getOrElse { false }
+
+            if (!isProtected) {
+                // Calculate risk level based on age
+                val riskLevel = calculateRiskLevel(disease, pet.age)
+                val warningLevel = when {
+                    riskLevel >= 0.20 -> WarningLevel.HIGH
+                    riskLevel >= 0.10 -> WarningLevel.MEDIUM
+                    riskLevel >= 0.05 -> WarningLevel.LOW
+                    else -> WarningLevel.INFO
+                }
+
+                warnings.add(
+                    DiseaseWarning(
+                        disease = disease,
+                        warningLevel = warningLevel,
+                        riskPercentage = (riskLevel * 100).toInt(),
+                        recommendedAction = getRecommendedAction(disease),
+                        urgency = getUrgency(disease, pet.age)
+                    )
+                )
             }
         }
 
-        return null
+        return warnings.sortedByDescending { it.warningLevel.priority }
+    }
+
+    /**
+     * NEW: Get vaccination recommendations based on upcoming disease risks
+     */
+    suspend fun getVaccinationRecommendations(pet: PetModel): List<VaccinationRecommendation> {
+        val petType = PetType.valueOf(pet.type)
+        val recommendations = mutableListOf<VaccinationRecommendation>()
+
+        // Get preventable diseases for current age
+        val preventableDiseases = diseaseRepository.getPreventableDiseasesForAge(petType, pet.age)
+            .getOrElse { emptyList() }
+
+        // Get upcoming vaccines
+        val upcomingVaccines = vaccineRepository.getRequiredVaccines(petType, pet.age)
+            .getOrElse { emptyList() }
+            .filter { vaccine ->
+                !pet.hasReceivedVaccine(vaccine.name)
+            }
+
+        for (vaccine in upcomingVaccines) {
+            val protectedDiseases = preventableDiseases.filter { disease ->
+                disease.preventableByVaccines.contains(vaccine.name)
+            }
+
+            val urgency = if (protectedDiseases.any { it.severity == com.example.tailstale.model.DiseaseSeverity.SEVERE }) {
+                UrgencyLevel.HIGH
+            } else {
+                UrgencyLevel.MEDIUM
+            }
+
+            recommendations.add(
+                VaccinationRecommendation(
+                    vaccine = vaccine,
+                    protectedDiseases = protectedDiseases,
+                    urgency = urgency,
+                    reason = "Prevents: ${protectedDiseases.joinToString(", ") { it.name }}"
+                )
+            )
+        }
+
+        return recommendations.sortedByDescending { it.urgency.priority }
+    }
+
+    /**
+     * ENHANCED: Check for random disease with vaccination protection
+     */
+    suspend fun checkForRandomDiseaseWithProtection(pet: PetModel): DiseaseModel? {
+        return try {
+            val petType = PetType.valueOf(pet.type)
+
+            // Get diseases that the pet is vulnerable to at current age
+            val vulnerableDiseases = diseaseRepository.getVulnerableDiseasesForAge(petType, pet.age)
+                .getOrElse { emptyList() }
+
+            if (vulnerableDiseases.isEmpty()) {
+                return null
+            }
+
+            // Calculate weighted random selection based on age-specific risk factors
+            val diseaseWithRisks = vulnerableDiseases.mapNotNull { disease ->
+                val riskLevel = calculateAgeSpecificRisk(disease, pet.age, pet)
+                if (riskLevel > 0) {
+                    disease to riskLevel
+                } else {
+                    null
+                }
+            }
+
+            if (diseaseWithRisks.isEmpty()) {
+                return null
+            }
+
+            // Weighted random selection - diseases with higher risk are more likely
+            val totalRisk = diseaseWithRisks.sumOf { it.second }
+            val randomValue = kotlin.random.Random.nextDouble() * totalRisk
+
+            var cumulativeRisk = 0.0
+            for ((disease, risk) in diseaseWithRisks) {
+                cumulativeRisk += risk
+                if (randomValue <= cumulativeRisk) {
+                    return disease
+                }
+            }
+
+            null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Calculate age-specific risk for a disease considering vaccination status
+     */
+    private fun calculateAgeSpecificRisk(disease: DiseaseModel, petAge: Int, pet: PetModel): Double {
+        // Get base risk for current age
+        val baseRisk = disease.riskFactorByAge.entries.find { (ageRange, _) ->
+            petAge in ageRange
+        }?.value ?: 0.0
+
+        if (baseRisk == 0.0) return 0.0
+
+        // Check vaccination protection
+        val isProtected = disease.preventableByVaccines.any { vaccineName ->
+            pet.vaccineHistory.values.any { vaccineRecord ->
+                when (vaccineRecord) {
+                    is Map<*, *> -> {
+                        vaccineRecord["vaccineName"]?.toString()?.contains(vaccineName, ignoreCase = true) ?: false
+                    }
+                    else -> vaccineRecord.toString().contains(vaccineName, ignoreCase = true)
+                }
+            }
+        }
+
+        // Reduce risk significantly if protected by vaccine
+        val protectionMultiplier = if (isProtected) 0.1 else 1.0 // 90% protection from vaccines
+
+        // Additional risk factors based on pet's current health status
+        val healthMultiplier = when {
+            pet.health < 30 -> 1.5 // Sick pets more vulnerable
+            pet.health < 60 -> 1.2 // Moderately healthy pets slightly more vulnerable
+            else -> 1.0
+        }
+
+        val stressMultiplier = when {
+            pet.happiness < 30 -> 1.3 // Stressed pets more vulnerable
+            pet.happiness < 60 -> 1.1
+            else -> 1.0
+        }
+
+        val hygieneMultiplier = when {
+            pet.cleanliness < 30 -> 1.4 // Dirty pets more vulnerable to disease
+            pet.cleanliness < 60 -> 1.1
+            else -> 1.0
+        }
+
+        return baseRisk * protectionMultiplier * healthMultiplier * stressMultiplier * hygieneMultiplier
+    }
+
+    /**
+     * Get comprehensive disease warnings (wrapper method for getAgeBasedDiseaseWarnings)
+     */
+    suspend fun getDiseaseWarnings(pet: PetModel): List<DiseaseWarning> {
+        return getAgeBasedDiseaseWarnings(pet)
+    }
+
+    // Helper methods
+    private fun calculateRiskLevel(disease: DiseaseModel, petAge: Int): Double {
+        return disease.riskFactorByAge.entries.find { (ageRange, _) ->
+            petAge in ageRange
+        }?.value ?: 0.0
+    }
+
+    private fun getRecommendedAction(disease: DiseaseModel): String {
+        return when {
+            disease.requiredVaccineForPrevention != null ->
+                "Get ${disease.requiredVaccineForPrevention} vaccination"
+            disease.preventableByVaccines.isNotEmpty() ->
+                "Consider vaccination: ${disease.preventableByVaccines.first()}"
+            else -> "Follow prevention tips: ${disease.preventionTips.joinToString(", ")}"
+        }
+    }
+
+    private fun getUrgency(disease: DiseaseModel, petAge: Int): UrgencyLevel {
+        val riskLevel = calculateRiskLevel(disease, petAge)
+
+        return when {
+            disease.severity == com.example.tailstale.model.DiseaseSeverity.SEVERE && riskLevel >= 0.15 -> UrgencyLevel.IMMEDIATE
+            disease.severity == com.example.tailstale.model.DiseaseSeverity.SEVERE && riskLevel >= 0.05 -> UrgencyLevel.HIGH
+            disease.severity == com.example.tailstale.model.DiseaseSeverity.MODERATE && riskLevel >= 0.10 -> UrgencyLevel.MEDIUM
+            else -> UrgencyLevel.LOW
+        }
     }
 
     private fun calculateBaseRiskForAge(age: Int, disease: DiseaseModel): Double {
@@ -218,4 +404,33 @@ data class DiseaseRiskAssessment(
     val isHighRisk: Boolean,
     val riskFactors: List<String>,
     val preventionTips: List<String>
+)
+
+data class DiseaseWarning(
+    val disease: DiseaseModel,
+    val warningLevel: WarningLevel,
+    val riskPercentage: Int,
+    val recommendedAction: String,
+    val urgency: UrgencyLevel
+)
+
+enum class WarningLevel(val priority: Int) {
+    HIGH(3),
+    MEDIUM(2),
+    LOW(1),
+    INFO(0)
+}
+
+enum class UrgencyLevel(val priority: Int) {
+    IMMEDIATE(3),
+    HIGH(2),
+    MEDIUM(1),
+    LOW(0)
+}
+
+data class VaccinationRecommendation(
+    val vaccine: VaccineModel,
+    val protectedDiseases: List<DiseaseModel>,
+    val urgency: UrgencyLevel,
+    val reason: String
 )

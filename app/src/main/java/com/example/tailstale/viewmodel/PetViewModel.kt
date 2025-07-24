@@ -7,8 +7,6 @@ import com.example.tailstale.model.CareAction
 import com.example.tailstale.model.CareActionType
 import com.example.tailstale.model.PetModel
 import com.example.tailstale.model.PetType
-import com.example.tailstale.model.VaccineModel
-import com.example.tailstale.model.VaccineRecord
 import com.example.tailstale.repo.PetRepository
 import com.example.tailstale.repo.UserRepository
 import kotlinx.coroutines.delay
@@ -18,7 +16,8 @@ import kotlinx.coroutines.launch
 
 class PetViewModel(
     private val petRepository: PetRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val activityRepository: com.example.tailstale.repo.ActivityRepository = com.example.tailstale.repo.ActivityRepositoryImpl()
 ) : ViewModel() {
 
     private val _pets = MutableStateFlow<List<PetModel>>(emptyList())
@@ -54,6 +53,13 @@ class PetViewModel(
 
     private val _diseaseRisks = MutableStateFlow<List<com.example.tailstale.service.DiseaseRiskAssessment>>(emptyList())
     val diseaseRisks: StateFlow<List<com.example.tailstale.service.DiseaseRiskAssessment>> = _diseaseRisks
+
+    // NEW: Disease warnings and vaccination recommendations
+    private val _diseaseWarnings = MutableStateFlow<List<com.example.tailstale.service.DiseaseWarning>>(emptyList())
+    val diseaseWarnings: StateFlow<List<com.example.tailstale.service.DiseaseWarning>> = _diseaseWarnings
+
+    private val _vaccinationRecommendations = MutableStateFlow<List<com.example.tailstale.service.VaccinationRecommendation>>(emptyList())
+    val vaccinationRecommendations: StateFlow<List<com.example.tailstale.service.VaccinationRecommendation>> = _vaccinationRecommendations
 
     /**
      * Start real-time aging for a user's pets
@@ -178,35 +184,44 @@ class PetViewModel(
                             Log.d("PetViewModel", "After: H:${agedPet.hunger} E:${agedPet.energy} C:${agedPet.cleanliness} Ha:${agedPet.happiness} Age:${agedPet.age}")
                         }
 
-                        // Check for random disease if pet aged up
-                        if (agedPet.age > pet.age) {
-                            val randomDisease = petHealthService.checkForRandomDisease(agedPet)
-                            randomDisease?.let { disease ->
-                                // Apply disease effects
-                                val affectedPet = agedPet.copy(
-                                    health = maxOf(0, agedPet.health - disease.healthImpact),
-                                    happiness = maxOf(0, agedPet.happiness - disease.happinessImpact),
-                                    diseaseHistory = agedPet.diseaseHistory + mapOf(
-                                        "diseaseName" to disease.name,
-                                        "severity" to disease.severity.name,
-                                        "diagnosedDate" to System.currentTimeMillis(),
-                                        "treatmentCost" to disease.treatmentCost,
-                                        "symptoms" to disease.symptoms
-                                    )
-                                )
-                                petRepository.updatePet(affectedPet)
-                                return@map affectedPet
-                            }
-                        }
-
                         agedPet
                     }
 
-                    _pets.value = updatedPets
+                    // Process disease checks for aged pets separately
+                    val finalUpdatedPets = mutableListOf<PetModel>()
+                    for (pet in updatedPets) {
+                        val originalPet = petList.find { it.id == pet.id }
+                        if (originalPet != null && pet.age > originalPet.age) {
+                            // Pet aged up, check for random disease
+                            val randomDisease = petHealthService.checkForRandomDiseaseWithProtection(pet)
+                            if (randomDisease != null) {
+                                // Apply disease effects
+                                val affectedPet = pet.copy(
+                                    health = maxOf(0, pet.health - randomDisease.healthImpact),
+                                    happiness = maxOf(0, pet.happiness - randomDisease.happinessImpact),
+                                    diseaseHistory = pet.diseaseHistory + mapOf(
+                                        "diseaseName" to randomDisease.name,
+                                        "severity" to randomDisease.severity.name,
+                                        "diagnosedDate" to System.currentTimeMillis(),
+                                        "treatmentCost" to randomDisease.treatmentCost,
+                                        "symptoms" to randomDisease.symptoms
+                                    )
+                                )
+                                petRepository.updatePet(affectedPet)
+                                finalUpdatedPets.add(affectedPet)
+                            } else {
+                                finalUpdatedPets.add(pet)
+                            }
+                        } else {
+                            finalUpdatedPets.add(pet)
+                        }
+                    }
+
+                    _pets.value = finalUpdatedPets
                     // Set current pet to first pet if none selected and pets exist
-                    if (_currentPet.value == null && updatedPets.isNotEmpty()) {
-                        _currentPet.value = updatedPets.first()
-                        updatePetAgingStats(updatedPets.first())
+                    if (_currentPet.value == null && finalUpdatedPets.isNotEmpty()) {
+                        _currentPet.value = finalUpdatedPets.first()
+                        updatePetAgingStats(finalUpdatedPets.first())
                     }
                     _error.value = null
                 },
@@ -267,6 +282,13 @@ class PetViewModel(
             // Calculate disease risks
             val risks = petHealthService.calculateDiseaseRisk(pet)
             _diseaseRisks.value = risks
+
+            // Use available methods for disease warnings and vaccination recommendations
+            val warnings = petHealthService.getAgeBasedDiseaseWarnings(pet)
+            _diseaseWarnings.value = warnings
+
+            val recommendations = petHealthService.getVaccinationRecommendations(pet)
+            _vaccinationRecommendations.value = recommendations
         }
     }
 
@@ -431,9 +453,9 @@ class PetViewModel(
         _error.value = null
     }
     /**
-     * Direct stats update method for immediate UI feedback
+     * Direct stats update method for immediate UI feedback with activity tracking
      */
-    fun updatePetStatsDirect(petId: String, statsUpdate: Map<String, Any>) {
+    fun updatePetStatsDirect(petId: String, statsUpdate: Map<String, Any>, activityType: String = "", videoRes: String? = null) {
         viewModelScope.launch {
             try {
                 // Update in repository first
@@ -462,6 +484,50 @@ class PetViewModel(
 
                                 // Update aging stats
                                 updatePetAgingStats(updatedPet)
+
+                                // Record activity based on action type
+                                val activityTypeEnum = when (activityType.lowercase()) {
+                                    "feed" -> com.example.tailstale.model.ActivityType.FEEDING
+                                    "play" -> com.example.tailstale.model.ActivityType.PLAYING
+                                    "clean" -> com.example.tailstale.model.ActivityType.CLEANING
+                                    "sleep" -> com.example.tailstale.model.ActivityType.SLEEPING
+                                    "walk" -> com.example.tailstale.model.ActivityType.WALKING
+                                    "sit" -> com.example.tailstale.model.ActivityType.SITTING
+                                    "bath" -> com.example.tailstale.model.ActivityType.BATHING
+                                    "health" -> com.example.tailstale.model.ActivityType.HEALTH_CHECK
+                                    else -> null
+                                }
+
+                                // Record activity if type is recognized
+                                activityTypeEnum?.let { type ->
+                                    val statsChanged = mutableMapOf<String, Int>()
+                                    statsUpdate.forEach { (key, value) ->
+                                        if (value is Int && key in listOf("health", "hunger", "happiness", "energy", "cleanliness")) {
+                                            val oldValue = when (key) {
+                                                "health" -> currentPet.health
+                                                "hunger" -> currentPet.hunger
+                                                "happiness" -> currentPet.happiness
+                                                "energy" -> currentPet.energy
+                                                "cleanliness" -> currentPet.cleanliness
+                                                else -> 0
+                                            }
+                                            val change = value - oldValue
+                                            if (change != 0) statsChanged[key] = change
+                                        }
+                                    }
+
+                                    recordActivity(
+                                        pet = updatedPet,
+                                        activityType = type,
+                                        duration = 10000, // 10 seconds for video activities
+                                        statsChanged = statsChanged,
+                                        videoPlayed = videoRes,
+                                        details = mapOf(
+                                            "timestamp" to System.currentTimeMillis(),
+                                            "actionSource" to "userInteraction"
+                                        )
+                                    )
+                                }
                             }
                         }
                         _error.value = null
@@ -474,5 +540,73 @@ class PetViewModel(
                 _error.value = "Error updating pet stats: ${e.message}"
             }
         }
+    }
+
+    /**
+     * Record an activity for a pet
+     */
+    private suspend fun recordActivity(
+        pet: PetModel,
+        activityType: com.example.tailstale.model.ActivityType,
+        activityName: String = activityType.displayName,
+        duration: Long = 0,
+        statsChanged: Map<String, Int> = emptyMap(),
+        videoPlayed: String? = null,
+        details: Map<String, Any> = emptyMap()
+    ) {
+        try {
+            println("DEBUG: PetViewModel - Recording activity: ${activityType.displayName} for pet: ${pet.name}")
+
+            val activity = com.example.tailstale.model.ActivityRecord(
+                petId = pet.id,
+                petName = pet.name,
+                activityType = activityType,
+                activityName = activityName,
+                timestamp = System.currentTimeMillis(),
+                duration = duration,
+                details = details,
+                statsChanged = statsChanged,
+                videoPlayed = videoPlayed,
+                success = true
+            )
+
+            println("DEBUG: PetViewModel - Created activity record: $activity")
+
+            val result = activityRepository.recordActivity(activity)
+            result.fold(
+                onSuccess = {
+                    println("DEBUG: PetViewModel - Activity recorded successfully!")
+                },
+                onFailure = { exception ->
+                    println("DEBUG: PetViewModel - Failed to record activity: ${exception.message}")
+                    Log.e("PetViewModel", "Failed to record activity: ${exception.message}")
+                }
+            )
+        } catch (e: Exception) {
+            // Log error but don't fail the main operation
+            println("DEBUG: PetViewModel - Exception in recordActivity: ${e.message}")
+            Log.e("PetViewModel", "Failed to record activity: ${e.message}")
+        }
+    }
+
+    /**
+     * Get activities for current user's pets
+     */
+    suspend fun getUserActivities(userId: String): Result<List<com.example.tailstale.model.ActivityRecord>> {
+        return activityRepository.getActivitiesByUserId(userId)
+    }
+
+    /**
+     * Get recent activities with limit
+     */
+    suspend fun getRecentActivities(userId: String, limit: Int = 50): Result<List<com.example.tailstale.model.ActivityRecord>> {
+        return activityRepository.getRecentActivities(userId, limit)
+    }
+
+    /**
+     * Get activity statistics for a pet
+     */
+    suspend fun getActivityStats(petId: String, days: Int = 7): Result<Map<String, Int>> {
+        return activityRepository.getActivityStats(petId, days)
     }
 }

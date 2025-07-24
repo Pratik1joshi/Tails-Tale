@@ -15,7 +15,12 @@ data class DiseaseModel(
     val affectedPetTypes: Set<PetType>,
     val symptoms: List<String>,
     val preventionTips: List<String> = emptyList(),
-    val treatmentSteps: List<String> = emptyList()
+    val treatmentSteps: List<String> = emptyList(),
+    // NEW: Age-based vulnerability
+    val vulnerableAgeRange: IntRange = 1..Int.MAX_VALUE, // Age in months when pet is vulnerable
+    val riskFactorByAge: Map<IntRange, Double> = emptyMap(), // Risk probability by age ranges
+    val preventableByVaccines: Set<String> = emptySet(), // Vaccine names that prevent this disease
+    val requiredVaccineForPrevention: String? = null // Primary vaccine that prevents this
 )
 
 enum class DiseaseCategory(val displayName: String) {
@@ -27,4 +32,3 @@ enum class DiseaseCategory(val displayName: String) {
     BEHAVIORAL("Behavioral")
 }
 enum class DiseaseSeverity { MILD, MODERATE, SEVERE }
-

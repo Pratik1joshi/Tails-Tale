@@ -42,6 +42,11 @@ import com.example.tailstale.view.pages.AddScreen
 import com.example.tailstale.view.pages.HomeScreen
 import com.example.tailstale.view.pages.ProfileScreen
 import com.example.tailstale.view.pages.StatsScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.tailstale.repo.PetRepositoryImpl
+import com.example.tailstale.viewmodel.PetViewModel
+import com.example.tailstale.viewmodel.PetViewModelFactory
+import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,6 +62,22 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VirtualPetApp() {
+    // Create PetViewModel with dependency injection
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val petViewModel: PetViewModel = viewModel(
+        factory = PetViewModelFactory(
+            PetRepositoryImpl(),
+            UserRepositoryImpl()
+        )
+    )
+
+    // Load user's pets when the app starts
+    LaunchedEffect(currentUser?.uid) {
+        currentUser?.uid?.let { userId ->
+            petViewModel.loadUserPets(userId)
+            petViewModel.startRealTimeAging(userId)
+        }
+    }
 
     var selectedVideoRes by remember { mutableStateOf(R.raw.sitting) }
     var isLooping by remember { mutableStateOf(true) }
@@ -188,7 +209,7 @@ fun VirtualPetApp() {
         ) {
             when (selectedTab) {
                 0 -> HomeScreen() // Default page
-                1 -> StatsScreen()
+                1 -> StatsScreen(petViewModel = petViewModel)
                 2 -> AddScreen()
                 3 -> ActivitiesScreen()
                 4 -> ProfileScreen(

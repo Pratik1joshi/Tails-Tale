@@ -61,35 +61,35 @@ data class PetModel(
                vaccineHistory.values.any { it.toString().contains(vaccineType, ignoreCase = true) }
     }
 
-    // Real-time aging: 1 real hour = 1 pet month
+    // Real-time aging: 1 real day = 1 pet month (slowed down from 1 hour = 1 month)
     fun shouldAgeUp(): Boolean {
-        val hoursSinceLastUpdate = (System.currentTimeMillis() - lastAgeUpdate) / (60 * 60 * 1000)
-        return hoursSinceLastUpdate >= 1 // Age up every real hour
+        val daysSinceLastUpdate = (System.currentTimeMillis() - lastAgeUpdate) / (24 * 60 * 60 * 1000)
+        return daysSinceLastUpdate >= 1 // Age up every real day
     }
 
     // Calculate how many months the pet should age based on time passed
     fun calculateAgeIncrease(): Int {
-        val hoursSinceLastUpdate = (System.currentTimeMillis() - lastAgeUpdate) / (60 * 60 * 1000)
-        return hoursSinceLastUpdate.toInt()
+        val daysSinceLastUpdate = (System.currentTimeMillis() - lastAgeUpdate) / (24 * 60 * 60 * 1000)
+        return daysSinceLastUpdate.toInt()
     }
 
-    // Stats decay over time - pets get hungrier, less clean, etc.
+    // Stats decay over time - pets get hungrier, less clean, etc. (keeping this fast)
     fun shouldDecayStats(): Boolean {
         val minutesSinceLastDecay = (System.currentTimeMillis() - lastStatsDecay) / (60 * 1000)
-        return minutesSinceLastDecay >= 30 // Decay stats every 30 minutes
+        return minutesSinceLastDecay >= 15 // Decay stats every 15 minutes (faster than before)
     }
 
     // Calculate stats decay based on time passed - ENHANCED for background decay
     fun calculateStatsDecay(): Map<String, Int> {
         val minutesSinceLastDecay = (System.currentTimeMillis() - lastStatsDecay) / (60 * 1000)
-        val decayIntervals = (minutesSinceLastDecay / 30).toInt() // Every 30 minutes
+        val decayIntervals = (minutesSinceLastDecay / 15).toInt() // Every 15 minutes
 
         return if (decayIntervals > 0) {
             mapOf(
-                "hunger" to minOf(100, hunger + (decayIntervals * 5)), // Gets hungrier
-                "energy" to maxOf(0, energy - (decayIntervals * 3)), // Gets tired
-                "cleanliness" to maxOf(0, cleanliness - (decayIntervals * 2)), // Gets dirty
-                "happiness" to maxOf(0, happiness - (decayIntervals * 1)) // Slightly less happy
+                "hunger" to minOf(100, hunger + (decayIntervals * 7)), // Gets hungrier faster
+                "energy" to maxOf(0, energy - (decayIntervals * 5)), // Gets tired faster
+                "cleanliness" to maxOf(0, cleanliness - (decayIntervals * 4)), // Gets dirty faster
+                "happiness" to maxOf(0, happiness - (decayIntervals * 3)) // Gets less happy faster
             )
         } else {
             emptyMap()
@@ -101,18 +101,18 @@ data class PetModel(
         val currentTime = System.currentTimeMillis()
         val minutesSinceLastDecay = (currentTime - lastStatsDecay) / (60 * 1000)
 
-        // Only apply background decay if more than 30 minutes have passed
-        if (minutesSinceLastDecay < 30) {
+        // Only apply background decay if more than 15 minutes have passed
+        if (minutesSinceLastDecay < 15) {
             return emptyMap()
         }
 
-        val decayIntervals = (minutesSinceLastDecay / 30).toInt() // Every 30 minutes
+        val decayIntervals = (minutesSinceLastDecay / 15).toInt() // Every 15 minutes
 
         // More aggressive decay for background (pet was neglected while app was closed)
-        val hungerIncrease = minOf(100 - hunger, decayIntervals * 6) // Faster hunger
-        val energyDecrease = minOf(energy, decayIntervals * 4) // Faster energy loss
-        val cleanlinessDecrease = minOf(cleanliness, decayIntervals * 3) // Gets dirtier
-        val happinessDecrease = minOf(happiness, decayIntervals * 2) // Gets sadder
+        val hungerIncrease = minOf(100 - hunger, decayIntervals * 8) // Even faster hunger
+        val energyDecrease = minOf(energy, decayIntervals * 6) // Even faster energy loss
+        val cleanlinessDecrease = minOf(cleanliness, decayIntervals * 5) // Gets dirtier faster
+        val happinessDecrease = minOf(happiness, decayIntervals * 4) // Gets sadder faster
 
         return mapOf(
             "hunger" to hunger + hungerIncrease,
@@ -126,13 +126,13 @@ data class PetModel(
     // NEW: Calculate background aging - aging that happened while app was closed
     fun calculateBackgroundAging(): Map<String, Any> {
         val currentTime = System.currentTimeMillis()
-        val hoursSinceLastUpdate = (currentTime - lastAgeUpdate) / (60 * 60 * 1000)
+        val daysSinceLastUpdate = (currentTime - lastAgeUpdate) / (24 * 60 * 60 * 1000)
 
-        if (hoursSinceLastUpdate < 1) {
+        if (daysSinceLastUpdate < 1) {
             return emptyMap()
         }
 
-        val ageIncrease = hoursSinceLastUpdate.toInt()
+        val ageIncrease = daysSinceLastUpdate.toInt()
         val newAge = age + ageIncrease
         val newWeight = calculateNewBackgroundWeight(newAge)
 
