@@ -87,23 +87,6 @@ class AuthViewModel(
         }
     }
 
-    fun signUpWithEmail(email: String, password: String, displayName: String) {
-        viewModelScope.launch {
-            _loading.value = true
-            authRepository.signUpWithEmail(email, password, displayName).fold(
-                onSuccess = {
-                    _currentUser.value = it
-                    _isSignedIn.value = true
-                    _error.value = null
-                },
-                onFailure = {
-                    _error.value = it.message
-                    _isSignedIn.value = false
-                }
-            )
-            _loading.value = false
-        }
-    }
 
     fun signInWithGoogle(credential: AuthCredential) {
         viewModelScope.launch {
