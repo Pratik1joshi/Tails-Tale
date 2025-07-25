@@ -90,4 +90,10 @@ dependencies {
 
     // Material Icons for Jetpack Compose
     implementation("androidx.compose.material:material-icons-extended")
+
+    androidTestImplementation("androidx.test:runner:1.2.0")
+    androidTestImplementation("androidx.test:rules:1.2.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+
+    testImplementation("org.mockito:mockito-core:5.6.0")
 }
