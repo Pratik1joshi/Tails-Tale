@@ -1,15 +1,22 @@
 package com.example.tailstale.service
 
 import com.example.tailstale.model.*
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 class AchievementManager {
-    private val firestore = FirebaseFirestore.getInstance()
-    private val userStatsCollection = firestore.collection("userStats")
-    private val achievementsCollection = firestore.collection("achievements")
+    // Change from Firestore to Realtime Database
+    private val database = FirebaseDatabase.getInstance()
+    private val userStatsRef = database.getReference("userStats")
+    private val achievementsRef = database.getReference("achievements")
 
     // All available achievements
     private val availableAchievements = listOf(
@@ -215,17 +222,21 @@ class AchievementManager {
     )
 
     suspend fun getUserStats(userId: String): UserStats {
-        return try {
-            val document = userStatsCollection.document(userId).get().await()
-            if (document.exists()) {
-                document.toObject(UserStats::class.java) ?: UserStats(userId = userId)
-            } else {
-                val newStats = UserStats(userId = userId)
-                userStatsCollection.document(userId).set(newStats).await()
-                newStats
-            }
-        } catch (e: Exception) {
-            UserStats(userId = userId)
+        return suspendCancellableCoroutine { continuation ->
+            userStatsRef.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val userStats = if (snapshot.exists()) {
+                        snapshot.getValue(UserStats::class.java) ?: UserStats(userId = userId)
+                    } else {
+                        UserStats(userId = userId)
+                    }
+                    continuation.resume(userStats)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    continuation.resumeWithException(error.toException())
+                }
+            })
         }
     }
 
@@ -233,6 +244,10 @@ class AchievementManager {
         val userStats = getUserStats(userId)
         val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
         val currentHour = java.time.LocalTime.now().hour
+
+        // Add debug logging
+        android.util.Log.d("AchievementManager", "📈 Updating user stats for action: $action")
+        android.util.Log.d("AchievementManager", "📊 Current stats before update - Walk: ${userStats.walkCount}, Feed: ${userStats.feedCount}, Play: ${userStats.playCount}")
 
         // Update stats based on action
         when (action) {
@@ -256,6 +271,9 @@ class AchievementManager {
             userStats.totalInteractions++
         }
 
+        // Log stats after update
+        android.util.Log.d("AchievementManager", "📊 Stats after update - Walk: ${userStats.walkCount}, Feed: ${userStats.feedCount}, Play: ${userStats.playCount}")
+
         // Update consecutive days and daily activity
         if (userStats.lastActiveDate != today) {
             if (userStats.lastActiveDate == LocalDate.now().minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE)) {
@@ -275,8 +293,13 @@ class AchievementManager {
 
         userStats.lastUpdated = System.currentTimeMillis()
 
-        // Save updated stats
-        userStatsCollection.document(userId).set(userStats).await()
+        // Save updated stats to Realtime Database
+        try {
+            userStatsRef.child(userId).setValue(userStats).await()
+            android.util.Log.d("AchievementManager", "💾 Stats saved to Firebase Realtime Database")
+        } catch (e: Exception) {
+            android.util.Log.e("AchievementManager", "❌ Failed to save stats: ${e.message}")
+        }
 
         // Check for new achievements
         return checkAndUnlockAchievements(userId, userStats)
@@ -329,6 +352,8 @@ class AchievementManager {
 
                 newlyUnlocked.add(unlockedAchievement)
 
+                android.util.Log.d("AchievementManager", "🎉 Achievement unlocked: ${achievement.name}")
+
                 // Save the unlocked achievement
                 saveUnlockedAchievement(userId, unlockedAchievement)
             }
@@ -336,7 +361,11 @@ class AchievementManager {
 
         // Update user stats with new achievements
         if (newlyUnlocked.isNotEmpty()) {
-            userStatsCollection.document(userId).set(userStats).await()
+            try {
+                userStatsRef.child(userId).setValue(userStats).await()
+            } catch (e: Exception) {
+                android.util.Log.e("AchievementManager", "Failed to update user stats with achievements: ${e.message}")
+            }
         }
 
         return newlyUnlocked
@@ -344,28 +373,30 @@ class AchievementManager {
 
     private suspend fun saveUnlockedAchievement(userId: String, achievement: Achievement) {
         try {
-            achievementsCollection
-                .document(userId)
-                .collection("unlocked")
-                .document(achievement.id)
-                .set(achievement)
-                .await()
+            achievementsRef.child(userId).child("unlocked").child(achievement.id).setValue(achievement).await()
         } catch (e: Exception) {
-            // Handle error
+            android.util.Log.e("AchievementManager", "Failed to save achievement: ${e.message}")
         }
     }
 
     suspend fun getUserAchievements(userId: String): List<Achievement> {
-        return try {
-            val documents = achievementsCollection
-                .document(userId)
-                .collection("unlocked")
-                .get()
-                .await()
+        return suspendCancellableCoroutine { continuation ->
+            achievementsRef.child(userId).child("unlocked").addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val achievements = mutableListOf<Achievement>()
+                    for (child in snapshot.children) {
+                        val achievement = child.getValue(Achievement::class.java)
+                        if (achievement != null) {
+                            achievements.add(achievement)
+                        }
+                    }
+                    continuation.resume(achievements)
+                }
 
-            documents.mapNotNull { it.toObject(Achievement::class.java) }
-        } catch (e: Exception) {
-            emptyList()
+                override fun onCancelled(error: DatabaseError) {
+                    continuation.resume(emptyList())
+                }
+            })
         }
     }
 

@@ -703,6 +703,9 @@ class PetViewModel(
             try {
                 val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
 
+                // Add debug logging
+                Log.d("PetViewModel", "🎯 Tracking achievement action: $actionType for pet: ${pet.name}")
+
                 val additionalData: Map<String, Any> = mapOf(
                     "petHealth" to pet.health,
                     "petId" to pet.id,
@@ -711,18 +714,25 @@ class PetViewModel(
 
                 val newAchievements = achievementManager.updateUserStats(userId, actionType, additionalData)
 
+                // Log the result
+                Log.d("PetViewModel", "🏆 New achievements unlocked: ${newAchievements.size}")
+                if (newAchievements.isNotEmpty()) {
+                    Log.d("PetViewModel", "🎉 Achievements: ${newAchievements.map { it.name }}")
+                }
+
                 if (newAchievements.isNotEmpty()) {
                     _newlyUnlockedAchievements.value = newAchievements
                     // Show achievement notification
                     _error.value = "🎉 Achievement${if (newAchievements.size > 1) "s" else ""} Unlocked: ${newAchievements.joinToString(", ") { it.name }}!"
                 }
 
-                // Load updated user stats
+                // Load updated user stats and log them
                 val updatedStats = achievementManager.getUserStats(userId)
+                Log.d("PetViewModel", "📊 Updated stats - Walk count: ${updatedStats.walkCount}, Feed count: ${updatedStats.feedCount}, Play count: ${updatedStats.playCount}")
                 _userStats.value = updatedStats
 
             } catch (e: Exception) {
-                Log.e("PetViewModel", "Failed to track achievement: ${e.message}")
+                Log.e("PetViewModel", "Failed to track achievement: ${e.message}", e)
             }
         }
     }

@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.tailstale.BuildConfig
 import com.example.tailstale.model.UserModel
 import com.example.tailstale.model.Achievement
 import com.example.tailstale.repo.UserRepository
@@ -42,6 +45,7 @@ import com.example.tailstale.service.AchievementManager
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -51,16 +55,26 @@ fun ProfileScreen(
     val context = LocalContext.current
     var showEditDialog by remember { mutableStateOf(false) }
     var showImagePicker by remember { mutableStateOf(false) }
+    var showAllAchievements by remember { mutableStateOf(false) } // Add this line
 
     // Create ProfileViewModel with dependency injection
     val profileViewModel: ProfileViewModel = viewModel(
         factory = ProfileViewModelFactory(userRepository)
     )
 
-    // Create AchievementViewModel to get real achievements
-    val achievementViewModel: AchievementViewModel = viewModel(
-        factory = AchievementViewModelFactory(AchievementManager())
-    )
+    // Step 1: Create AchievementViewModel safely (no data loading yet)
+    val achievementViewModel: AchievementViewModel? = remember {
+        try {
+            android.util.Log.d("ProfileScreen", "Attempting to create AchievementViewModel...")
+            val factory = AchievementViewModelFactory(AchievementManager())
+            val viewModel = factory.create(AchievementViewModel::class.java)
+            android.util.Log.d("ProfileScreen", "AchievementViewModel created successfully!")
+            viewModel
+        } catch (e: Exception) {
+            android.util.Log.e("ProfileScreen", "Failed to create AchievementViewModel: ${e.message}", e)
+            null
+        }
+    }
 
     val userProfile = profileViewModel.userProfile
     val isLoading = profileViewModel.isLoading
@@ -68,17 +82,22 @@ fun ProfileScreen(
     val errorMessage = profileViewModel.errorMessage
     val isInitialized = profileViewModel.isInitialized
 
-    // Achievement states
-    val unlockedAchievements by achievementViewModel.unlockedAchievements.collectAsState()
-    val userStats by achievementViewModel.userStats.collectAsState()
-    val achievementProgress by achievementViewModel.achievementProgress.collectAsState()
-
-    // Load achievement data when screen loads
-    LaunchedEffect(Unit) {
-        FirebaseAuth.getInstance().currentUser?.uid?.let { userId ->
-            achievementViewModel.loadUserData(userId)
-        }
+    // Achievement states - start with safe defaults, no data loading yet
+    val unlockedAchievements by if (achievementViewModel != null) {
+        achievementViewModel.unlockedAchievements.collectAsState()
+    } else {
+        remember { mutableStateOf(emptyList<Achievement>()) }
     }
+
+    val userStats by if (achievementViewModel != null) {
+        achievementViewModel.userStats.collectAsState()
+    } else {
+        remember { mutableStateOf<com.example.tailstale.model.UserStats?>(null) }
+    }
+
+    // Don't load achievement data yet - we'll add this in step 2
+    // LaunchedEffect(Unit) { ... }
+    // LaunchedEffect(userProfile) { ... }
 
     // Permission handling for camera and storage
     val permissions = mutableListOf<String>().apply {
@@ -118,10 +137,10 @@ fun ProfileScreen(
         }
     }
 
-    // Handle permission results
+    // Handle permission results - removed empty if body
     LaunchedEffect(permissionsState.allPermissionsGranted) {
         if (permissionsState.allPermissionsGranted && showImagePicker) {
-            // Permissions granted, but dialog should handle the picker launch
+            // Permissions are handled in the dialog
         }
     }
 
@@ -185,6 +204,26 @@ fun ProfileScreen(
         return
     }
 
+    // Step 2: Safe achievement data loading with detailed logging
+    LaunchedEffect(Unit) {
+        try {
+            if (achievementViewModel != null) {
+                android.util.Log.d("ProfileScreen", "Starting to load achievement data...")
+                FirebaseAuth.getInstance().currentUser?.uid?.let { userId ->
+                    android.util.Log.d("ProfileScreen", "Loading achievements for user: $userId")
+                    achievementViewModel.loadUserData(userId)
+                    android.util.Log.d("ProfileScreen", "Achievement data load initiated successfully!")
+                } ?: run {
+                    android.util.Log.w("ProfileScreen", "No current user found for achievement loading")
+                }
+            } else {
+                android.util.Log.w("ProfileScreen", "AchievementViewModel is null, skipping data loading")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ProfileScreen", "Failed to load achievement data in LaunchedEffect: ${e.message}", e)
+        }
+    }
+
     // Main profile content - only show if profile is loaded
     userProfile?.let { profile ->
         LazyColumn(
@@ -211,7 +250,7 @@ fun ProfileScreen(
                 // Achievements Card
                 UserAchievementsCard(
                     achievements = unlockedAchievements, // Use real unlocked achievements
-                    onAddAchievement = { /* No-op, handled by AchievementViewModel */ }
+                    onViewAllAchievements = { showAllAchievements = true } // Add this line
                 )
             }
 
@@ -340,6 +379,14 @@ fun ProfileScreen(
                     cameraLauncher.launch(null)
                     showImagePicker = false
                 }
+            )
+        }
+
+        // Show all achievements dialog
+        if (showAllAchievements) {
+            AllAchievementsDialog(
+                achievements = unlockedAchievements,
+                onDismiss = { showAllAchievements = false }
             )
         }
     }
@@ -546,7 +593,7 @@ fun StatItem(
 @Composable
 fun UserAchievementsCard(
     achievements: List<Achievement>,
-    onAddAchievement: () -> Unit
+    onViewAllAchievements: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -590,15 +637,26 @@ fun UserAchievementsCard(
                         AchievementItem(achievement = achievement)
                     }
 
-                    // Show "View More" if there are more than 3 achievements
+                    // Show "View All" button if there are more than 3 achievements
                     if (achievements.size > 3) {
-                        Text(
-                            text = "... and ${achievements.size - 3} more achievements",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center,
+                        TextButton(
+                            onClick = onViewAllAchievements,
                             modifier = Modifier.fillMaxWidth()
-                        )
+                        ) {
+                            Text(
+                                text = "View All ${achievements.size} Achievements",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             } else {
@@ -852,7 +910,7 @@ fun AccountActionsCard(
             AccountActionItem(
                 title = "Sign Out",
                 subtitle = "Sign out of your account",
-                icon = Icons.Default.ExitToApp,
+                icon = Icons.AutoMirrored.Filled.ExitToApp,
                 textColor = Color.Red,
                 onClick = onSignOut
             )
@@ -905,7 +963,7 @@ fun AccountActionItem(
             )
         }
         Icon(
-            Icons.Default.KeyboardArrowRight,
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
@@ -979,7 +1037,7 @@ fun ImagePickerDialog(
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("Choose how you'd like to update your profile picture:")
+                Text("Choose how'd like to update your profile picture:")
 
                 // Gallery option
                 Card(
@@ -1059,6 +1117,60 @@ fun ImagePickerDialog(
             }
         }
     )
+}
+
+@Composable
+fun AllAchievementsDialog(
+    achievements: List<Achievement>,
+    onDismiss: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                "All Achievements",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            // Achievement list
+            if (achievements.isNotEmpty()) {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(achievements) { achievement ->
+                        AchievementItem(achievement = achievement)
+                    }
+                }
+            } else {
+                Text(
+                    "No achievements unlocked yet.",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            // Close button
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text("Close")
+            }
+        }
+    }
 }
 
 // Utility functions for pet display

@@ -1,11 +1,11 @@
 package com.example.tailstale.model
 
 data class Achievement(
-    val id: String,
-    val name: String,
-    val description: String,
-    val category: AchievementCategory,
-    val difficulty: AchievementDifficulty,
+    val id: String = "",
+    val name: String = "",
+    val description: String = "",
+    val category: AchievementCategory = AchievementCategory.BASIC,
+    val difficulty: AchievementDifficulty = AchievementDifficulty.EASY,
     var isUnlocked: Boolean = false,
     var dateUnlocked: Long? = null,
     val requirements: Map<String, Any> = emptyMap(), // e.g., "feedCount" to 15
@@ -43,12 +43,14 @@ enum class AchievementCategory(val displayName: String) {
     BONDING("Pet Bonding"),
     CARE("Daily Care"),
     MILESTONE("Milestones"),
-    SPECIAL("Special Events")
+    SPECIAL("Special Events"),
+    BASIC("Basic")
 }
 
 enum class AchievementDifficulty(val displayName: String, val multiplier: Int) {
     BEGINNER("Beginner", 1),
     INTERMEDIATE("Intermediate", 2),
     ADVANCED("Advanced", 3),
-    EXPERT("Expert", 5)
+    EXPERT("Expert", 5),
+    EASY("Easy", 1)
 }
