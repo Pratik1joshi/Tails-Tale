@@ -34,6 +34,14 @@ fun StatsScreen(petViewModel: PetViewModel) {
     val vaccinationRecommendations by petViewModel.vaccinationRecommendations.collectAsState()
     val petAgingStats by petViewModel.petAgingStats.collectAsState()
 
+    // Load health data when screen is displayed or pet changes
+    LaunchedEffect(currentPet?.id) {
+        currentPet?.let { pet ->
+            // Force update pet health data when Stats screen is opened
+            petViewModel.selectPet(pet)
+        }
+    }
+
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
 
     LazyColumn(

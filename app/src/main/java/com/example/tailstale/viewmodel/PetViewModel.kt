@@ -55,7 +55,7 @@ class PetViewModel(
     private val _diseaseRisks = MutableStateFlow<List<com.example.tailstale.service.DiseaseRiskAssessment>>(emptyList())
     val diseaseRisks: StateFlow<List<com.example.tailstale.service.DiseaseRiskAssessment>> = _diseaseRisks
 
-    // NEW: Disease warnings and vaccination recommendations
+    // Disease warnings and vaccination recommendations
     private val _diseaseWarnings = MutableStateFlow<List<com.example.tailstale.service.DiseaseWarning>>(emptyList())
     val diseaseWarnings: StateFlow<List<com.example.tailstale.service.DiseaseWarning>> = _diseaseWarnings
 
@@ -68,6 +68,27 @@ class PetViewModel(
 
     private val _userStats = MutableStateFlow<com.example.tailstale.model.UserStats?>(null)
     val userStats: StateFlow<com.example.tailstale.model.UserStats?> = _userStats
+
+    // Add notification service
+    private val notificationService = com.example.tailstale.service.NotificationService()
+
+    // NEW: Real-time notification monitor
+    private val realTimeNotificationMonitor = com.example.tailstale.service.RealTimeNotificationMonitor.getInstance()
+
+    // Add notification states - NOW WITH REAL-TIME INTEGRATION
+    private val _notifications = MutableStateFlow<List<com.example.tailstale.model.NotificationModel>>(emptyList())
+    val notifications: StateFlow<List<com.example.tailstale.model.NotificationModel>> = _notifications
+
+    private val _unreadNotificationCount = MutableStateFlow(0)
+    val unreadNotificationCount: StateFlow<Int> = _unreadNotificationCount
+
+    // NEW: Critical alerts count for urgent notifications
+    private val _criticalAlertsCount = MutableStateFlow(0)
+    val criticalAlertsCount: StateFlow<Int> = _criticalAlertsCount
+
+    // NEW: Real-time notification states
+    private val _realTimeNotifications = MutableStateFlow<List<com.example.tailstale.model.NotificationModel>>(emptyList())
+    val realTimeNotifications: StateFlow<List<com.example.tailstale.model.NotificationModel>> = _realTimeNotifications
 
     /**
      * Start real-time aging for a user's pets
@@ -121,61 +142,6 @@ class PetViewModel(
     private fun updatePetAgingStats(pet: PetModel) {
         _petAgingStats.value = petAgingService.getPetAgingStats(pet)
     }
-
-//    fun createPet(name: String, petType: PetType, userId: String) {
-//        viewModelScope.launch {
-//            _loading.value = true
-//            _error.value = null // Clear any previous errors
-//
-//            try {
-//                val pet = PetModel(
-//                    name = name,
-//                    type = petType.name,
-//                    age = 1, // Start at 1 month old
-//                    ageInRealDays = 0,
-//                    lastAgeUpdate = System.currentTimeMillis(),
-//                    lastStatsDecay = System.currentTimeMillis()
-//                )
-//
-//                // Create the pet first
-//                petRepository.createPet(pet).fold(
-//                    onSuccess = { createdPet ->
-//                        // Link the pet to the user using the linkPetToUser method
-//                        viewModelScope.launch {
-//                            (petRepository as? com.example.tailstale.repo.PetRepositoryImpl)?.linkPetToUser(userId, createdPet.id)?.fold(
-//                                onSuccess = {
-//                                    // Successfully linked, now update UI state
-//                                    _currentPet.value = createdPet
-//                                    updatePetHealth(createdPet)
-//                                    updatePetAgingStats(createdPet)
-//
-//                                    // Track pet creation achievement
-//                                    trackAchievementAction("addPet", createdPet)
-//
-//                                    // Reload the user's pets to refresh the list
-//                                    loadUserPets(userId)
-//
-//                                    _error.value = "Pet '${createdPet.name}' created successfully!"
-//                                    _loading.value = false
-//                                },
-//                                onFailure = { linkError ->
-//                                    _error.value = "Pet created but failed to link to user: ${linkError.message}"
-//                                    _loading.value = false
-//                                }
-//                            )
-//                        }
-//                    },
-//                    onFailure = { createError ->
-//                        _error.value = "Failed to create pet: ${createError.message}"
-//                        _loading.value = false
-//                    }
-//                )
-//            } catch (e: Exception) {
-//                _error.value = "Error creating pet: ${e.message}"
-//                _loading.value = false
-//            }
-//        }
-//    }
 
     fun loadUserPets(userId: String) {
         viewModelScope.launch {
@@ -231,8 +197,21 @@ class PetViewModel(
                     _pets.value = finalUpdatedPets
                     // Set current pet to first pet if none selected and pets exist
                     if (_currentPet.value == null && finalUpdatedPets.isNotEmpty()) {
-                        _currentPet.value = finalUpdatedPets.first()
-                        updatePetAgingStats(finalUpdatedPets.first())
+                        val firstPet = finalUpdatedPets.first()
+                        _currentPet.value = firstPet
+                        updatePetAgingStats(firstPet)
+                        // Load health data for the first pet
+                        updatePetHealth(firstPet)
+                    } else if (_currentPet.value != null) {
+                        // If we already have a current pet, update its health data too
+                        _currentPet.value?.let { currentPet ->
+                            val updatedCurrentPet = finalUpdatedPets.find { it.id == currentPet.id }
+                            if (updatedCurrentPet != null) {
+                                _currentPet.value = updatedCurrentPet
+                                updatePetAgingStats(updatedCurrentPet)
+                                updatePetHealth(updatedCurrentPet)
+                            }
+                        }
                     }
                     _error.value = null
                 },
@@ -282,24 +261,179 @@ class PetViewModel(
      */
     private fun updatePetHealth(pet: PetModel) {
         viewModelScope.launch {
-            // Get required vaccines for current age
-            val required = petHealthService.getRequiredVaccines(pet)
-            _requiredVaccines.value = required
+            try {
+                android.util.Log.d("PetViewModel", "🏥 Loading health data for ${pet.name} (Age: ${pet.age} months)")
 
-            // Get overdue vaccines
-            val overdue = petHealthService.getOverdueVaccines(pet)
-            _overdueVaccines.value = overdue
+                // Get required vaccines for current age
+                val required = petHealthService.getRequiredVaccines(pet)
+                android.util.Log.d("PetViewModel", "💉 Required vaccines: ${required.size} - ${required.map { it.name }}")
+                _requiredVaccines.value = required
 
-            // Calculate disease risks
-            val risks = petHealthService.calculateDiseaseRisk(pet)
-            _diseaseRisks.value = risks
+                // Get overdue vaccines
+                val overdue = petHealthService.getOverdueVaccines(pet)
+                android.util.Log.d("PetViewModel", "⚠️ Overdue vaccines: ${overdue.size} - ${overdue.map { it.name }}")
+                _overdueVaccines.value = overdue
 
-            // Use available methods for disease warnings and vaccination recommendations
-            val warnings = petHealthService.getAgeBasedDiseaseWarnings(pet)
-            _diseaseWarnings.value = warnings
+                // Calculate disease risks
+                val risks = petHealthService.calculateDiseaseRisk(pet)
+                android.util.Log.d("PetViewModel", "📊 Disease risks: ${risks.size} - ${risks.take(3).map { "${it.disease.name}: ${it.riskPercentage}%" }}")
+                _diseaseRisks.value = risks
 
-            val recommendations = petHealthService.getVaccinationRecommendations(pet)
-            _vaccinationRecommendations.value = recommendations
+                // Use available methods for disease warnings and vaccination recommendations
+                val warnings = petHealthService.getAgeBasedDiseaseWarnings(pet)
+                android.util.Log.d("PetViewModel", "⚠️ Disease warnings: ${warnings.size} - ${warnings.map { it.disease.name }}")
+                _diseaseWarnings.value = warnings
+
+                val recommendations = petHealthService.getVaccinationRecommendations(pet)
+                android.util.Log.d("PetViewModel", "💊 Vaccination recommendations: ${recommendations.size} - ${recommendations.map { it.vaccine.name }}")
+                _vaccinationRecommendations.value = recommendations
+
+                // Generate notifications based on pet status
+                generatePetNotifications(pet, required, overdue, risks)
+
+                android.util.Log.d("PetViewModel", "✅ Health data loaded successfully for ${pet.name}")
+            } catch (e: Exception) {
+                android.util.Log.e("PetViewModel", "❌ Failed to load health data: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Generate comprehensive notifications for the pet
+     */
+    private fun generatePetNotifications(
+        pet: PetModel,
+        requiredVaccines: List<com.example.tailstale.model.VaccineModel>,
+        overdueVaccines: List<com.example.tailstale.model.VaccineModel>,
+        diseaseRisks: List<com.example.tailstale.service.DiseaseRiskAssessment>
+    ) {
+        viewModelScope.launch {
+            val allNotifications = mutableListOf<com.example.tailstale.model.NotificationModel>()
+
+            // Generate pet status notifications
+            allNotifications.addAll(notificationService.generatePetNotifications(pet))
+
+            // Generate vaccination notifications
+            allNotifications.addAll(notificationService.generateVaccinationNotifications(pet, requiredVaccines, overdueVaccines))
+
+            // Generate disease notifications
+            val activeDiseases = getActiveDiseases()
+            allNotifications.addAll(notificationService.generateDiseaseNotifications(pet, activeDiseases, diseaseRisks))
+
+            // Generate aging notifications
+            allNotifications.addAll(notificationService.generateAgingNotifications(pet))
+
+            // Add system notifications (welcome message, etc.)
+            if (_notifications.value.isEmpty()) {
+                allNotifications.addAll(notificationService.generateSystemNotifications())
+            }
+
+            // Update notification service
+            notificationService.updateNotifications(allNotifications)
+
+            // Update local states
+            _notifications.value = notificationService.notifications.value
+            _unreadNotificationCount.value = notificationService.unreadCount.value
+
+            android.util.Log.d("PetViewModel", "🔔 Generated ${allNotifications.size} notifications for ${pet.name}")
+        }
+    }
+
+    /**
+     * Mark notification as read
+     */
+    fun markNotificationAsRead(context: android.content.Context, notificationId: String) {
+        notificationService.markAsRead(notificationId)
+        // Also mark in real-time monitor to prevent regeneration
+        realTimeNotificationMonitor.markAsRead(context, notificationId)
+        _notifications.value = notificationService.notifications.value
+        _unreadNotificationCount.value = notificationService.unreadCount.value
+    }
+
+    /**
+     * Mark all notifications as read
+     */
+    fun markAllNotificationsAsRead(context: android.content.Context) {
+        notificationService.markAllAsRead()
+        // Also mark all in real-time monitor
+        realTimeNotificationMonitor.markAllAsRead(context)
+        _notifications.value = notificationService.notifications.value
+        _unreadNotificationCount.value = 0
+    }
+
+    /**
+     * Clear specific notification
+     */
+    fun clearNotification(notificationId: String) {
+        notificationService.clearNotification(notificationId)
+        // Also clear from real-time monitor
+        realTimeNotificationMonitor.clearNotification(notificationId)
+        _notifications.value = notificationService.notifications.value
+        _unreadNotificationCount.value = notificationService.unreadCount.value
+    }
+
+    /**
+     * Clear all notifications
+     */
+    fun clearAllNotifications() {
+        notificationService.clearAllNotifications()
+        // Also clear all from real-time monitor
+        realTimeNotificationMonitor.clearAllNotifications()
+        _notifications.value = emptyList()
+        _unreadNotificationCount.value = 0
+    }
+
+    /**
+     * Handle notification actions
+     */
+    fun handleNotificationAction(actionType: String?, petId: String?) {
+        when (actionType) {
+            "feed" -> {
+                petId?.let { id ->
+                    updatePetStatsDirect(id, mapOf(
+                        "hunger" to 10, // Reduce hunger
+                        "happiness" to minOf(100, (_currentPet.value?.happiness ?: 50) + 10),
+                        "lastFed" to System.currentTimeMillis()
+                    ), "feed")
+                }
+            }
+            "play" -> {
+                petId?.let { id ->
+                    updatePetStatsDirect(id, mapOf(
+                        "happiness" to minOf(100, (_currentPet.value?.happiness ?: 50) + 15),
+                        "energy" to maxOf(0, (_currentPet.value?.energy ?: 50) - 10),
+                        "lastPlayed" to System.currentTimeMillis()
+                    ), "play")
+                }
+            }
+            "sleep" -> {
+                petId?.let { id ->
+                    updatePetStatsDirect(id, mapOf(
+                        "energy" to minOf(100, (_currentPet.value?.energy ?: 50) + 20),
+                        "health" to minOf(100, (_currentPet.value?.health ?: 50) + 5)
+                    ), "sleep")
+                }
+            }
+            "clean" -> {
+                petId?.let { id ->
+                    updatePetStatsDirect(id, mapOf(
+                        "cleanliness" to minOf(100, (_currentPet.value?.cleanliness ?: 50) + 25),
+                        "happiness" to minOf(100, (_currentPet.value?.happiness ?: 50) + 5),
+                        "lastCleaned" to System.currentTimeMillis()
+                    ), "clean")
+                }
+            }
+            "health_check" -> {
+                performEmergencyHealthCheck()
+            }
+            "vaccinate" -> {
+                // Navigate to Stats screen where vaccination can be done
+                _error.value = "💉 Please go to Stats screen to view and administer vaccines"
+            }
+            "treat_disease" -> {
+                // Navigate to Stats screen where diseases can be treated
+                _error.value = "🏥 Please go to Stats screen to view and treat diseases"
+            }
         }
     }
 
@@ -337,7 +471,7 @@ class PetViewModel(
     }
 
     /**
-     * NEW: Enhanced vaccination method with disease prevention check
+     * Enhanced vaccination method with disease prevention check
      */
     fun administerVaccine(vaccineId: String, vaccineName: String) {
         _currentPet.value?.let { pet ->
@@ -377,7 +511,7 @@ class PetViewModel(
     }
 
     /**
-     * NEW: Treat an active disease and remove it from pet's conditions
+     * Treat an active disease and remove it from pet's conditions
      */
     fun treatDisease(diseaseName: String) {
         _currentPet.value?.let { pet ->
@@ -449,7 +583,7 @@ class PetViewModel(
     }
 
     /**
-     * NEW: Emergency health check - forces immediate health assessment
+     * Emergency health check - forces immediate health assessment
      */
     fun performEmergencyHealthCheck() {
         _currentPet.value?.let { pet ->
@@ -536,7 +670,7 @@ class PetViewModel(
     }
 
     /**
-     * NEW: Get active diseases that need treatment
+     * Get active diseases that need treatment
      */
     fun getActiveDiseases(): List<Map<String, Any>> {
         val pet = _currentPet.value ?: return emptyList()
@@ -807,6 +941,111 @@ class PetViewModel(
             } catch (e: Exception) {
                 _error.value = "Error creating pet: ${e.message}"
                 _loading.value = false
+            }
+        }
+    }
+
+    /**
+     * NEW: Start real-time notification monitoring
+     */
+    fun startRealTimeNotificationMonitoring(context: android.content.Context, userId: String) {
+        viewModelScope.launch {
+            // Start the real-time notification monitor
+            realTimeNotificationMonitor.startRealTimeMonitoring(context, userId)
+
+            // Start observing real-time notifications
+            realTimeNotificationMonitor.realTimeNotifications.collect { realTimeNotifications ->
+                _realTimeNotifications.value = realTimeNotifications
+
+                // Combine with existing notifications and update counts
+                val combinedNotifications = (_notifications.value + realTimeNotifications)
+                    .distinctBy { "${it.title}-${it.petId}-${it.type}" }
+                    .sortedWith(
+                        compareByDescending<com.example.tailstale.model.NotificationModel> { it.priority.level }
+                            .thenByDescending { it.timestamp }
+                    )
+
+                _notifications.value = combinedNotifications
+                _unreadNotificationCount.value = combinedNotifications.count { !it.isRead }
+                _criticalAlertsCount.value = combinedNotifications.count {
+                    it.priority == com.example.tailstale.model.NotificationPriority.CRITICAL && !it.isRead
+                }
+
+                android.util.Log.d("PetViewModel", "🔔 Real-time notifications updated: ${realTimeNotifications.size} new, ${combinedNotifications.size} total")
+            }
+        }
+    }
+
+    /**
+     * NEW: Stop real-time notification monitoring
+     */
+    fun stopRealTimeNotificationMonitoring(context: android.content.Context, userId: String) {
+        realTimeNotificationMonitor.stopMonitoring(context, userId)
+    }
+
+    /**
+     * NEW: Force refresh real-time notifications
+     */
+    fun refreshRealTimeNotifications(context: android.content.Context, userId: String) {
+        viewModelScope.launch {
+            realTimeNotificationMonitor.generateRealTimeNotifications(context, userId)
+        }
+    }
+
+    /**
+     * NEW: Handle emergency actions from critical notifications
+     */
+    fun handleEmergencyAction(actionType: String?, petId: String?) {
+        when (actionType) {
+            "emergency_feed" -> {
+                petId?.let { id ->
+                    // Emergency feeding - larger stat changes
+                    updatePetStatsDirect(id, mapOf(
+                        "hunger" to 0, // Completely satisfy hunger
+                        "happiness" to minOf(100, (_currentPet.value?.happiness ?: 50) + 20),
+                        "health" to minOf(100, (_currentPet.value?.health ?: 50) + 5),
+                        "lastFed" to System.currentTimeMillis()
+                    ), "emergency_feed")
+                    _error.value = "🚨 Emergency feeding completed for ${_currentPet.value?.name}!"
+                }
+            }
+            "emergency_rest" -> {
+                petId?.let { id ->
+                    updatePetStatsDirect(id, mapOf(
+                        "energy" to 100, // Fully restore energy
+                        "health" to minOf(100, (_currentPet.value?.health ?: 50) + 10),
+                        "happiness" to minOf(100, (_currentPet.value?.happiness ?: 50) + 10)
+                    ), "emergency_rest")
+                    _error.value = "🚨 Emergency rest completed for ${_currentPet.value?.name}!"
+                }
+            }
+            "emergency_clean" -> {
+                petId?.let { id ->
+                    updatePetStatsDirect(id, mapOf(
+                        "cleanliness" to 100, // Fully clean
+                        "health" to minOf(100, (_currentPet.value?.health ?: 50) + 15),
+                        "happiness" to minOf(100, (_currentPet.value?.happiness ?: 50) + 10),
+                        "lastCleaned" to System.currentTimeMillis()
+                    ), "emergency_clean")
+                    _error.value = "🚨 Emergency cleaning completed for ${_currentPet.value?.name}!"
+                }
+            }
+            "emergency_play" -> {
+                petId?.let { id ->
+                    updatePetStatsDirect(id, mapOf(
+                        "happiness" to minOf(100, (_currentPet.value?.happiness ?: 50) + 30),
+                        "energy" to maxOf(10, (_currentPet.value?.energy ?: 50) - 5), // Small energy cost
+                        "lastPlayed" to System.currentTimeMillis()
+                    ), "emergency_play")
+                    _error.value = "🚨 Emergency playtime completed for ${_currentPet.value?.name}!"
+                }
+            }
+            "emergency_health_check" -> {
+                performEmergencyHealthCheck()
+            }
+            else -> {
+                // Fall back to regular actions
+                handleNotificationAction(actionType, petId)
             }
         }
     }

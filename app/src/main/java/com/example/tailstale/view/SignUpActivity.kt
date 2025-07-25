@@ -115,14 +115,29 @@ fun SignupBody() {
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        println("DEBUG: Google sign-in result received with code: ${result.resultCode}")
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
             val account = task.getResult(ApiException::class.java)
+            println("DEBUG: Google account retrieved: ${account?.email}")
             account?.idToken?.let { token ->
+                println("DEBUG: Got ID token, creating credential")
                 val credential = GoogleAuthProvider.getCredential(token, null)
                 authViewModel.signInWithGoogle(credential)
+            } ?: run {
+                println("DEBUG: No ID token received")
+                authViewModel.setError("Google sign in failed: No ID token received")
             }
         } catch (e: ApiException) {
+            println("DEBUG: Google sign-in ApiException: ${e.statusCode} - ${e.message}")
+            when (e.statusCode) {
+                12501 -> authViewModel.setError("Google sign in cancelled")
+                12502 -> authViewModel.setError("Google sign in failed: Network error")
+                12500 -> authViewModel.setError("Google sign in failed: Sign in currently disabled")
+                else -> authViewModel.setError("Google sign in failed: ${e.message}")
+            }
+        } catch (e: Exception) {
+            println("DEBUG: Google sign-in general exception: ${e.message}")
             authViewModel.setError("Google sign in failed: ${e.message}")
         }
     }

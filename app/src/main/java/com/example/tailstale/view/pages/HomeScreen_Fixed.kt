@@ -631,16 +631,6 @@ fun HomeScreen() {
                 }
             )
 
-            // Cooldown indicator
-            if (remainingCooldown > 0) {
-                CooldownIndicator(
-                    remainingTime = remainingCooldown,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(16.dp)
-                )
-            }
-
             // Left-side icons
             Column(
                 modifier = Modifier

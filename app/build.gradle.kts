@@ -91,4 +91,10 @@ dependencies {
 
     // Material Icons for Jetpack Compose
     implementation("androidx.compose.material:material-icons-extended")
+
+    // WorkManager for background notifications
+    implementation("androidx.work:work-runtime-ktx:2.8.1")
+
+    // For better notification support
+    implementation("androidx.core:core-ktx:1.12.0")
 }
