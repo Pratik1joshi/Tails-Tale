@@ -91,34 +91,54 @@ class AuthRepositoryImpl(
     // In AuthRepositoryImpl.kt
     override suspend fun signInWithGoogle(credential: AuthCredential): Result<UserModel> {
         return try {
+            println("DEBUG: AuthRepository - signInWithGoogle started")
             val authResult = auth.signInWithCredential(credential).await()
             val firebaseUser = authResult.user
 
             if (firebaseUser != null) {
-                // Create or get existing user - removed game references
-                val user = UserModel(
-                    id = firebaseUser.uid,
-                    username = firebaseUser.displayName ?: firebaseUser.email?.substringBefore('@') ?: "",
-                    email = firebaseUser.email ?: "",
-                    displayName = firebaseUser.displayName ?: "",
-                    profileImageUrl = firebaseUser.photoUrl?.toString() ?: "",
-                    bio = "",
-                    location = "",
-                    lastLoginDate = System.currentTimeMillis(),
-                    creationDate = System.currentTimeMillis(),
-                    pets = emptyMap(), // Change to Map structure
-                    achievements = emptyList(),
-                    petCareStats = emptyMap(),
-                    learningProgress = emptyMap()
-                )
+                println("DEBUG: AuthRepository - Firebase Google auth successful for: ${firebaseUser.uid}")
 
-                // Save user to repository
-                userRepository.createUser(user).getOrThrow()
-                Result.success(user)
+                // Check if user already exists in our database
+                val userResult = userRepository.getUserById(firebaseUser.uid)
+                val existingUser = userResult.getOrNull()
+
+                if (existingUser != null) {
+                    println("DEBUG: AuthRepository - Existing Google user found, updating login date")
+                    // Update only the lastLoginDate to preserve all other data
+                    val updatedUser = existingUser.copy(lastLoginDate = System.currentTimeMillis())
+                    userRepository.updateUser(updatedUser).getOrThrow()
+                    Result.success(updatedUser)
+                } else {
+                    println("DEBUG: AuthRepository - New Google user, creating user record")
+                    // Create new user - removed game references
+                    val newUser = UserModel(
+                        id = firebaseUser.uid,
+                        username = firebaseUser.displayName ?: firebaseUser.email?.substringBefore('@') ?: "",
+                        email = firebaseUser.email ?: "",
+                        displayName = firebaseUser.displayName ?: "",
+                        profileImageUrl = firebaseUser.photoUrl?.toString() ?: "",
+                        bio = "",
+                        location = "",
+                        lastLoginDate = System.currentTimeMillis(),
+                        creationDate = System.currentTimeMillis(),
+                        pets = emptyMap(), // Change to Map structure
+                        achievements = emptyList(),
+                        petCareStats = emptyMap(),
+                        learningProgress = emptyMap()
+                    )
+
+                    // Save user to repository
+                    userRepository.createUser(newUser).getOrThrow()
+                    println("DEBUG: AuthRepository - New Google user created successfully")
+                    Result.success(newUser)
+                }
             } else {
+                println("DEBUG: AuthRepository - Google sign in failed - no user returned")
                 Result.failure(Exception("Authentication failed - no user returned"))
             }
         } catch (e: Exception) {
+            println("DEBUG: AuthRepository - Google sign in failed with exception: ${e.message}")
+            e.printStackTrace()
             Result.failure(Exception("Google sign in failed: ${e.message}"))
         }
     }

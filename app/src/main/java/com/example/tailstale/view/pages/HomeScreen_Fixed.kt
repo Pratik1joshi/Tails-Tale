@@ -201,13 +201,13 @@ private fun CompactStatusBar(
             Text(
                 text = label,
                 fontSize = 11.sp,
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = "$value%",
                 fontSize = 11.sp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
         }
 
@@ -217,7 +217,7 @@ private fun CompactStatusBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp)
-                .background(Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(3.dp))
+                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(3.dp))
         ) {
             val displayValue = if (isInverted) 100 - value else value
             val barColor = if (isInverted && value > 70) Color.Red else color
@@ -293,34 +293,15 @@ fun HomeScreen() {
     // NEW: Start real-time aging when screen loads
     LaunchedEffect(currentUser?.uid) {
         currentUser?.uid?.let { userId ->
-            println("DEBUG: Starting real-time aging for user: $userId")
             petViewModel.startRealTimeAging(userId) // Start aging service
             petViewModel.loadUserPets(userId)
-        } ?: run {
-            println("DEBUG: No current user found")
         }
     }
 
     // NEW: Stop aging when screen is disposed
     DisposableEffect(Unit) {
         onDispose {
-            println("DEBUG: Stopping real-time aging")
             petViewModel.stopRealTimeAging()
-        }
-    }
-
-    // Debug logging for state changes
-    LaunchedEffect(pets, currentPet, loading, error) {
-        println("DEBUG: pets.size = ${pets.size}")
-        println("DEBUG: currentPet = ${currentPet?.name}")
-        println("DEBUG: loading = $loading")
-        println("DEBUG: error = $error")
-    }
-
-    // Debug logging for pet stats changes
-    LaunchedEffect(currentPet?.health, currentPet?.hunger, currentPet?.happiness) {
-        currentPet?.let { pet ->
-            println("DEBUG: Pet stats - Health: ${pet.health}, Hunger: ${pet.hunger}, Happiness: ${pet.happiness}, Energy: ${pet.energy}, Cleanliness: ${pet.cleanliness}")
         }
     }
 
@@ -343,7 +324,7 @@ fun HomeScreen() {
                             "health" to minOf(100, pet.health + 5), // Small health boost
                             "lastFed" to System.currentTimeMillis()
                         )
-                        petViewModel.updatePetStatsDirect(pet.id, statsUpdate)
+                        petViewModel.updatePetStatsDirect(pet.id, statsUpdate, "feed", "pupeating")
                     }
                     "play" -> {
                         val statsUpdate = mapOf(
@@ -352,7 +333,7 @@ fun HomeScreen() {
                             "hunger" to minOf(100, pet.hunger + 5), // Playing makes hungry
                             "lastPlayed" to System.currentTimeMillis()
                         )
-                        petViewModel.updatePetStatsDirect(pet.id, statsUpdate)
+                        petViewModel.updatePetStatsDirect(pet.id, statsUpdate, "play", "pupplaying")
                     }
                     "clean" -> {
                         val statsUpdate = mapOf(
@@ -361,7 +342,7 @@ fun HomeScreen() {
                             "health" to minOf(100, pet.health + 10), // Health boost from cleanliness
                             "lastCleaned" to System.currentTimeMillis()
                         )
-                        petViewModel.updatePetStatsDirect(pet.id, statsUpdate)
+                        petViewModel.updatePetStatsDirect(pet.id, statsUpdate, "clean", "pupbathing")
                     }
                     "sleep" -> {
                         val statsUpdate = mapOf(
@@ -369,8 +350,27 @@ fun HomeScreen() {
                             "health" to minOf(100, pet.health + 5), // Rest improves health
                             "happiness" to minOf(100, pet.happiness + 5) // Rested pets are happier
                         )
-                        petViewModel.updatePetStatsDirect(pet.id, statsUpdate)
+                        petViewModel.updatePetStatsDirect(pet.id, statsUpdate, "sleep", "pupsleeping")
                     }
+                    "walk" -> {
+                        val statsUpdate = mapOf(
+                            "energy" to maxOf(0, pet.energy - 10), // Walking uses energy
+                            "happiness" to minOf(100, pet.happiness + 25), // Walking makes pets very happy
+                            "health" to minOf(100, pet.health + 15), // Great exercise for health
+                            "hunger" to minOf(100, pet.hunger + 10), // Exercise increases appetite
+                            "cleanliness" to maxOf(0, pet.cleanliness - 5) // Gets a bit dirty from walking
+                        )
+                        petViewModel.updatePetStatsDirect(pet.id, statsUpdate, "walk", "pupwalking")
+                    }
+                    "rest", "sit" -> {
+                        val statsUpdate = mapOf(
+                            "energy" to minOf(100, pet.energy + 15), // Sitting restores some energy
+                            "happiness" to minOf(100, pet.happiness + 8), // Content from resting
+                            "health" to minOf(100, pet.health + 3) // Light rest helps health
+                        )
+                        petViewModel.updatePetStatsDirect(pet.id, statsUpdate, "sit", "pupsitting")
+                    }
+
                 }
             }
 
@@ -389,7 +389,7 @@ fun HomeScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
@@ -399,7 +399,7 @@ fun HomeScreen() {
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         }
 
@@ -427,84 +427,6 @@ fun HomeScreen() {
             }
         }
 
-        // NEW: Pet Selection Row (if multiple pets)
-        if (pets.size > 1) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "Your Pets (${pets.size})",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        pets.take(3).forEach { pet -> // Show max 3 pets to avoid overflow
-                            Card(
-                                modifier = Modifier
-                                    .width(80.dp)
-                                    .height(100.dp)
-                                    .clickable { petViewModel.selectPet(pet) },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (currentPet?.id == pet.id) Color(0xFF007AFF) else Color(0xFFF8F8F8)
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = if (currentPet?.id == pet.id) 8.dp else 2.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(8.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    Text(
-                                        text = when (pet.type.uppercase()) {
-                                            "DOG" -> "🐕"
-                                            "CAT" -> "🐱"
-                                            "RABBIT" -> "🐰"
-                                            "BIRD" -> "🐦"
-                                            "HAMSTER" -> "🐹"
-                                            else -> "🐾"
-                                        },
-                                        fontSize = 24.sp,
-                                        modifier = Modifier.padding(bottom = 4.dp)
-                                    )
-
-                                    Text(
-                                        text = pet.name,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = if (currentPet?.id == pet.id) Color.White else Color.Black,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1
-                                    )
-
-                                    Text(
-                                        text = "${pet.age}mo",
-                                        fontSize = 8.sp,
-                                        color = if (currentPet?.id == pet.id) Color.White.copy(0.8f) else Color.Gray
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
         // Pet info header - Enhanced with aging info
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -516,7 +438,7 @@ fun HomeScreen() {
                     text = currentPet?.name ?: "Loading...",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Surface(
@@ -538,14 +460,14 @@ fun HomeScreen() {
                         "${pet.age} months old"
                     } ?: "Unknown age",
                     fontSize = 14.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
                 // NEW: Growth stage indicator
                 currentPet?.let { pet ->
                     Text(
                         text = pet.growthStage.name.lowercase().replaceFirstChar { it.uppercase() },
                         fontSize = 12.sp,
-                        color = Color(0xFF007AFF),
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -558,7 +480,7 @@ fun HomeScreen() {
         currentPet?.let { pet ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
@@ -634,62 +556,62 @@ fun HomeScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // NEW: Real-time aging info card (compact version)
-        currentPet?.let { pet ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F8FF)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "🕐 Real-time aging active",
-                        fontSize = 12.sp,
-                        color = Color(0xFF007AFF),
-                        fontWeight = FontWeight.Medium
-                    )
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Weight: ${String.format("%.1f", petAgingStats["weight"] ?: pet.weight)}kg",
-                            fontSize = 10.sp,
-                            color = Color.Gray
-                        )
-                        Text(
-                            text = "${pet.growthStage.name.lowercase().replaceFirstChar { it.uppercase() }}",
-                            fontSize = 10.sp,
-                            color = Color(0xFF007AFF),
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // NEW: Force Age Button for testing (removable in production)
-        currentPet?.let { pet ->
-            OutlinedButton(
-                onClick = { petViewModel.forceAgePet(pet.id) },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFF007AFF)
-                )
-            ) {
-                Text("🕐 Force Age Update (Test)", fontSize = 12.sp)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+//        // NEW: Real-time aging info card (compact version)
+//        currentPet?.let { pet ->
+//            Card(
+//                modifier = Modifier.fillMaxWidth(),
+//                colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F8FF)),
+//                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+//            ) {
+//                Row(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .padding(12.dp),
+//                    horizontalArrangement = Arrangement.SpaceBetween,
+//                    verticalAlignment = Alignment.CenterVertically
+//                ) {
+//                    Text(
+//                        text = "🕐 Real-time aging active",
+//                        fontSize = 12.sp,
+//                        color = Color(0xFF007AFF),
+//                        fontWeight = FontWeight.Medium
+//                    )
+//
+//                    Row(
+//                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+//                    ) {
+//                        Text(
+//                            text = "Weight: ${String.format("%.1f", petAgingStats["weight"] ?: pet.weight)}kg",
+//                            fontSize = 10.sp,
+//                            color = Color.Gray
+//                        )
+//                        Text(
+//                            text = "${pet.growthStage.name.lowercase().replaceFirstChar { it.uppercase() }}",
+//                            fontSize = 10.sp,
+//                            color = Color(0xFF007AFF),
+//                            fontWeight = FontWeight.Medium
+//                        )
+//                    }
+//                }
+//            }
+//
+//            Spacer(modifier = Modifier.height(16.dp))
+//        }
+//
+//        // NEW: Force Age Button for testing (removable in production)
+//        currentPet?.let { pet ->
+//            OutlinedButton(
+//                onClick = { petViewModel.forceAgePet(pet.id) },
+//                modifier = Modifier.fillMaxWidth(),
+//                colors = ButtonDefaults.outlinedButtonColors(
+//                    contentColor = Color(0xFF007AFF)
+//                )
+//            ) {
+//                Text("🕐 Force Age Update (Test)", fontSize = 12.sp)
+//            }
+//
+//            Spacer(modifier = Modifier.height(16.dp))
+//        }
 
         // Video with overlay icons - NOW MORE PROMINENT
         Box(
@@ -708,16 +630,6 @@ fun HomeScreen() {
                     isLooping = true
                 }
             )
-
-            // Cooldown indicator
-            if (remainingCooldown > 0) {
-                CooldownIndicator(
-                    remainingTime = remainingCooldown,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(16.dp)
-                )
-            }
 
             // Left-side icons
             Column(
@@ -756,16 +668,6 @@ fun HomeScreen() {
                     isEnabled = isActionEnabled,
                     label = "Sit"
                 )
-
-                // Bathing icon action
-                PetOverlayIcon(
-                    painter = painterResource(id = R.drawable.baseline_bathtub_24),
-                    onClick = {
-                        performAction(videoRes = R.raw.pupbathing, actionType = "clean")
-                    },
-                    isEnabled = isActionEnabled,
-                    label = "Bath"
-                )
             }
 
             // Right-side icons
@@ -776,11 +678,11 @@ fun HomeScreen() {
                     .zIndex(1f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Walking icon actions
+                // Walking icon actions - FIXED: Changed from "play" to "walk"
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.baseline_directions_walk_24),
                     onClick = {
-                        performAction(videoRes = R.raw.pupwalking, actionType = "play")
+                        performAction(videoRes = R.raw.pupwalking, actionType = "walk")
                     },
                     isEnabled = isActionEnabled,
                     label = "Walk"
@@ -805,16 +707,6 @@ fun HomeScreen() {
                     isEnabled = isActionEnabled,
                     label = "Play"
                 )
-
-                // Health icon actions
-                PetOverlayIcon(
-                    painter = painterResource(id = R.drawable.outline_local_hospital_24),
-                    onClick = {
-                        performAction(videoRes = R.raw.pupvaccination, actionType = "health")
-                    },
-                    isEnabled = isActionEnabled,
-                    label = "Health"
-                )
             }
         }
 
@@ -823,7 +715,7 @@ fun HomeScreen() {
         // Pet care tips
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
                 modifier = Modifier.padding(16.dp)
@@ -832,7 +724,7 @@ fun HomeScreen() {
                     "Pet Care Tips",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -842,11 +734,138 @@ fun HomeScreen() {
                             "• Clean regularly to maintain health\n" +
                             "• Let your pet sleep to restore energy",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // NEW: Pet Selection Row (if multiple pets)
+        if (pets.size > 1) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Your Pets (${pets.size})",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        pets.take(3).forEach { pet -> // Show max 3 pets to avoid overflow
+                            Card(
+                                modifier = Modifier
+                                    .width(80.dp)
+                                    .height(100.dp)
+                                    .clickable { petViewModel.selectPet(pet) },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (currentPet?.id == pet.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = if (currentPet?.id == pet.id) 8.dp else 2.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = when (pet.type.uppercase()) {
+                                            "DOG" -> "🐕"
+                                            "CAT" -> "🐱"
+                                            "RABBIT" -> "🐰"
+                                            "BIRD" -> "🐦"
+                                            "HAMSTER" -> "🐹"
+                                            else -> "🐾"
+                                        },
+                                        fontSize = 24.sp,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+
+                                    Text(
+                                        text = pet.name,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (currentPet?.id == pet.id) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1
+                                    )
+
+                                    Text(
+                                        text = "${pet.age}mo",
+                                        fontSize = 8.sp,
+                                        color = if (currentPet?.id == pet.id) MaterialTheme.colorScheme.onPrimary.copy(0.8f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
     }
 }
+
+//@Composable
+//private fun CompactStatusBar(
+//    label: String,
+//    value: Int,
+//    color: Color,
+//    modifier: Modifier = Modifier,
+//    isInverted: Boolean = false
+//) {
+//    Column(
+//        modifier = modifier
+//    ) {
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            horizontalArrangement = Arrangement.SpaceBetween
+//        ) {
+//            Text(
+//                text = label,
+//                fontSize = 11.sp,
+//                color = MaterialTheme.colorScheme.onSurface,
+//                fontWeight = FontWeight.Medium
+//            )
+//            Text(
+//                text = "$value%",
+//                fontSize = 11.sp,
+//                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+//            )
+//        }
+//
+//        Spacer(modifier = Modifier.height(3.dp))
+//
+//        Box(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .height(6.dp)
+//                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(3.dp))
+//        ) {
+//            val displayValue = if (isInverted) 100 - value else value
+//            val barColor = if (isInverted && value > 70) Color.Red else color
+//
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth(displayValue / 100f)
+//                    .height(6.dp)
+//                    .background(barColor, RoundedCornerShape(3.dp))
+//            )
+//        }
+//    }
+//}

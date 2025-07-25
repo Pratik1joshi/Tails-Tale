@@ -13,6 +13,9 @@ import com.google.firebase.auth.AuthCredential
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeoutOrNull
 
 class AuthViewModel(
     private val authRepository: AuthRepository,
@@ -43,42 +46,49 @@ class AuthViewModel(
 
     private fun checkCurrentUser() {
         viewModelScope.launch {
-            println("DEBUG: AuthViewModel - checkCurrentUser() called")
             _loading.value = true
-            authRepository.getCurrentUser().fold(
-                onSuccess = { user ->
-                    println("DEBUG: AuthViewModel - getCurrentUser success: ${user?.displayName}")
-                    println("DEBUG: AuthViewModel - shouldAutoLogin: ${_shouldAutoLogin.value}")
-                    _currentUser.value = user
-                    _isSignedIn.value = user != null && _shouldAutoLogin.value
-                    _error.value = null
-                    println("DEBUG: AuthViewModel - isSignedIn set to: ${_isSignedIn.value}")
-                },
-                onFailure = { exception ->
-                    println("DEBUG: AuthViewModel - getCurrentUser failed: ${exception.message}")
-                    _error.value = exception.message
-                    _isSignedIn.value = false
+            try {
+                // Add timeout to prevent infinite loading
+                val result = withTimeout(10000) { // 10 second timeout
+                    authRepository.getCurrentUser()
                 }
-            )
-            _loading.value = false
-            println("DEBUG: AuthViewModel - checkCurrentUser() completed")
+
+                result.fold(
+                    onSuccess = { user ->
+                        _currentUser.value = user
+                        _isSignedIn.value = user != null && _shouldAutoLogin.value
+                        _error.value = null
+                    },
+                    onFailure = { exception ->
+                        _error.value = exception.message
+                        _isSignedIn.value = false
+                        _currentUser.value = null
+                    }
+                )
+            } catch (e: TimeoutCancellationException) {
+                _error.value = "Authentication check timed out"
+                _isSignedIn.value = false
+                _currentUser.value = null
+            } catch (e: Exception) {
+                _error.value = "Authentication check failed: ${e.message}"
+                _isSignedIn.value = false
+                _currentUser.value = null
+            } finally {
+                _loading.value = false
+            }
         }
     }
 
     fun signInWithEmail(email: String, password: String) {
         viewModelScope.launch {
-            println("DEBUG: AuthViewModel - signInWithEmail called")
             _loading.value = true
             authRepository.signInWithEmail(email, password).fold(
                 onSuccess = { user ->
-                    println("DEBUG: AuthViewModel - signInWithEmail success: ${user.displayName}")
                     _currentUser.value = user
                     _isSignedIn.value = true
                     _error.value = null
-                    println("DEBUG: AuthViewModel - User signed in successfully")
                 },
                 onFailure = { exception ->
-                    println("DEBUG: AuthViewModel - signInWithEmail failed: ${exception.message}")
                     _error.value = exception.message
                     _isSignedIn.value = false
                 }
