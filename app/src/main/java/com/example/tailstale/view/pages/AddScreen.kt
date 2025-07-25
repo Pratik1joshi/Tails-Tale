@@ -109,7 +109,7 @@ fun AddScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
@@ -120,7 +120,7 @@ fun AddScreen() {
             // Header with conditional title
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
@@ -131,19 +131,19 @@ fun AddScreen() {
                         if (pets.isEmpty()) Icons.Default.Add else Icons.Default.Pets,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
-                        tint = Color(0xFF007AFF)
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         if (pets.isEmpty()) "Add Your First Pet" else "Manage Your Pets",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         if (pets.isEmpty()) "Create your virtual companion" else "You have ${pets.size} pet${if (pets.size > 1) "s" else ""}",
                         fontSize = 14.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -154,7 +154,7 @@ fun AddScreen() {
             if (pets.isNotEmpty()) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(
@@ -164,7 +164,7 @@ fun AddScreen() {
                             "Your Pets",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -175,9 +175,9 @@ fun AddScreen() {
                                     .padding(vertical = 4.dp)
                                     .clickable { petViewModel.selectPet(pet) },
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (currentPet?.id == pet.id) Color(0xFF007AFF).copy(alpha = 0.1f) else Color(0xFFF8F8F8)
+                                    containerColor = if (currentPet?.id == pet.id) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant
                                 ),
-                                border = if (currentPet?.id == pet.id) BorderStroke(2.dp, Color(0xFF007AFF)) else null
+                                border = if (currentPet?.id == pet.id) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -202,19 +202,19 @@ fun AddScreen() {
                                             pet.name,
                                             fontSize = 16.sp,
                                             fontWeight = FontWeight.Medium,
-                                            color = Color.Black
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
                                             "${pet.type.lowercase().replaceFirstChar { it.uppercase() }} • ${pet.age} months old",
                                             fontSize = 12.sp,
-                                            color = Color.Gray
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                         )
                                     }
                                     if (currentPet?.id == pet.id) {
                                         Icon(
                                             Icons.Default.CheckCircle,
                                             contentDescription = "Selected",
-                                            tint = Color(0xFF007AFF),
+                                            tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
@@ -235,7 +235,7 @@ fun AddScreen() {
                         onClick = { showModeSelection = true },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFF007AFF)
+                            contentColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
                         Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -247,7 +247,7 @@ fun AddScreen() {
                         onClick = { showAddForm = true },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF007AFF)
+                            containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -264,14 +264,14 @@ fun AddScreen() {
                 // Pet Name Section
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             "Pet Name",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
@@ -295,14 +295,14 @@ fun AddScreen() {
                 // Pet Type Section
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             "Pet Type",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         LazyRow(
@@ -324,14 +324,14 @@ fun AddScreen() {
                 // Gender Section
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             "Gender",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(
@@ -375,14 +375,14 @@ fun AddScreen() {
                         .height(56.dp),
                     enabled = isFormValid && !loading && currentUser != null,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF007AFF),
-                        disabledContainerColor = Color.Gray
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        disabledContainerColor = MaterialTheme.colorScheme.outline
                     )
                 ) {
                     if (loading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
                         Icon(
@@ -440,7 +440,10 @@ fun AddScreen() {
                         )
                     },
                     text = {
-                        Text("Your new pet has been created successfully! You can now take care of them on the Home screen.")
+                        Text(
+                            "Your new pet has been created successfully! You can now take care of them on the Home screen.",
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     },
                     confirmButton = {
                         TextButton(
@@ -449,7 +452,7 @@ fun AddScreen() {
                                 showAddForm = false
                             }
                         ) {
-                            Text("OK", color = Color(0xFF007AFF))
+                            Text("OK", color = MaterialTheme.colorScheme.primary)
                         }
                     },
                     icon = {
@@ -458,7 +461,9 @@ fun AddScreen() {
                             contentDescription = null,
                             tint = Color(0xFF4CAF50)
                         )
-                    }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    textContentColor = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -469,12 +474,13 @@ fun AddScreen() {
                     title = {
                         Text(
                             "Choose Action",
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     },
                     text = {
                         Column {
-                            Text("What would you like to do?")
+                            Text("What would you like to do?", color = MaterialTheme.colorScheme.onSurface)
                             Spacer(modifier = Modifier.height(16.dp))
 
                             // Change Pet Option
@@ -485,15 +491,15 @@ fun AddScreen() {
                                         showModeSelection = false
                                         // Just close dialog, pets are already shown above
                                     },
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF007AFF).copy(alpha = 0.1f))
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                             ) {
                                 Row(
                                     modifier = Modifier.padding(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.SwapHoriz, contentDescription = null, tint = Color(0xFF007AFF))
+                                    Icon(Icons.Default.SwapHoriz, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Select a different pet from your list", color = Color.Black)
+                                    Text("Select a different pet from your list", color = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
 
@@ -515,7 +521,7 @@ fun AddScreen() {
                                 ) {
                                     Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFF4CAF50))
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Create a new pet", color = Color.Black)
+                                    Text("Create a new pet", color = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                         }
@@ -524,9 +530,11 @@ fun AddScreen() {
                         TextButton(
                             onClick = { showModeSelection = false }
                         ) {
-                            Text("Cancel", color = Color(0xFF007AFF))
+                            Text("Cancel", color = MaterialTheme.colorScheme.primary)
                         }
-                    }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    textContentColor = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -544,9 +552,9 @@ fun PetTypeCard(
             .width(80.dp)
             .clickable { onSelect() },
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFF007AFF) else Color.White
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
         ),
-        border = if (isSelected) null else BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f))
+        border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -560,7 +568,7 @@ fun PetTypeCard(
             Text(
                 petType.displayName,
                 fontSize = 12.sp,
-                color = if (isSelected) Color.White else Color.Black,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -578,9 +586,9 @@ fun GenderOption(
         modifier = modifier
             .clickable { onSelect() },
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFF007AFF) else Color.White
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
         ),
-        border = if (isSelected) null else BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f))
+        border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier
@@ -592,14 +600,14 @@ fun GenderOption(
             Icon(
                 gender.icon,
                 contentDescription = null,
-                tint = if (isSelected) Color.White else Color.Gray,
+                tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 gender.displayName,
                 fontSize = 14.sp,
-                color = if (isSelected) Color.White else Color.Black,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Medium
             )
         }

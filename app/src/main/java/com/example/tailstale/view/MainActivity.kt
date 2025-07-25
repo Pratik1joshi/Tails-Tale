@@ -47,6 +47,8 @@ import com.example.tailstale.repo.PetRepositoryImpl
 import com.example.tailstale.viewmodel.PetViewModel
 import com.example.tailstale.viewmodel.PetViewModelFactory
 import com.google.firebase.auth.FirebaseAuth
+import com.example.tailstale.ui.theme.VirtualPetTheme
+import com.example.tailstale.ui.theme.ThemeState
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,6 +78,7 @@ fun VirtualPetApp() {
         currentUser?.uid?.let { userId ->
             petViewModel.loadUserPets(userId)
             petViewModel.startRealTimeAging(userId)
+            petViewModel.loadUserAchievements(userId) // Load achievement data
         }
     }
 
@@ -95,11 +98,11 @@ fun VirtualPetApp() {
         Icons.Default.Person
     )
 
+    // Theme state
+    val isDarkMode by ThemeState.isDarkMode
+
     Scaffold(
-
-
-
-                topBar = {
+        topBar = {
             TopAppBar(
                 title = {
                     Row(
@@ -118,54 +121,85 @@ fun VirtualPetApp() {
                                 Text("🐾", fontSize = 16.sp)
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("PAWS TALK", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                "PAWS TALK",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
 
                         Row {
                             IconButton(onClick = { /* Notifications */ }) {
-                                Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+                                Icon(
+                                    Icons.Default.Notifications,
+                                    contentDescription = "Notifications",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
                             }
                             IconButton(onClick = { showSettingsMenu = true }) {
-                                Icon(Icons.Default.Settings, contentDescription = "Settings")
+                                Icon(
+                                    Icons.Default.Settings,
+                                    contentDescription = "Settings",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
                                 DropdownMenu(
                                     expanded = showSettingsMenu,
                                     onDismissRequest = { showSettingsMenu = false}
                                 ) {
-
                                     DropdownMenuItem(
-                                        text = { Text("Dark Mode") },
+                                        text = {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(if (isDarkMode) "Light Mode" else "Dark Mode")
+                                            }
+                                        },
                                         onClick = {
-                                            // Handle dark mode toggle
+                                            ThemeState.toggleTheme()
                                             showSettingsMenu = false
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Logout") },
+                                        text = {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Logout,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text("Logout")
+                                            }
+                                        },
                                         onClick = {
-                                            // Handle logout logic
                                             showSettingsMenu = false
                                             showLogoutDialog = true
-
-
-
                                         }
                                     )
-
-
                                 }
                             }
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
         bottomBar = {
             NavigationBar(
-                containerColor = Color.White,
-                contentColor = Color(0xFF007AFF)
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
             ) {
                 tabs.forEachIndexed { index, title ->
                     NavigationBarItem(
@@ -174,14 +208,14 @@ fun VirtualPetApp() {
                                 is ImageVector -> Icon(
                                     icon,
                                     contentDescription = title,
-                                    tint = if (selectedTab == index) Color(0xFF007AFF) else Color.Gray
+                                    tint = if (selectedTab == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
                                 is Painter -> Image(
                                     painter = icon,
                                     contentDescription = title,
                                     modifier = Modifier.size(24.dp),
                                     colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
-                                        if (selectedTab == index) Color(0xFF007AFF) else Color.Gray
+                                        if (selectedTab == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                     )
                                 )
                             }
@@ -190,22 +224,28 @@ fun VirtualPetApp() {
                             Text(
                                 title,
                                 fontSize = 10.sp,
-                                color = if (selectedTab == index) Color(0xFF007AFF) else Color.Gray
+                                color = if (selectedTab == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         },
                         selected = selectedTab == index,
-                        onClick = { selectedTab = index }
+                        onClick = { selectedTab = index },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                        )
                     )
                 }
             }
         }
-    )
-
-    { innerPadding ->
+    ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .background(MaterialTheme.colorScheme.background)
         ) {
             when (selectedTab) {
                 0 -> HomeScreen() // Default page
@@ -218,11 +258,22 @@ fun VirtualPetApp() {
             }
         }
     }
+
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Confirm Logout") },
-            text = { Text("Are you sure you want to logout?") },
+            title = {
+                Text(
+                    "Confirm Logout",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    "Are you sure you want to logout?",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showLogoutDialog = false
@@ -230,14 +281,16 @@ fun VirtualPetApp() {
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                     context.startActivity(intent)
                 }) {
-                    Text("Logout")
+                    Text("Logout", color = MaterialTheme.colorScheme.primary)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancel")
+                    Text("Cancel", color = MaterialTheme.colorScheme.primary)
                 }
-            }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            textContentColor = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -358,18 +411,3 @@ fun StatusBar(label: String, value: Int, color: Color) {
 }
 
 // Other screen composables
-
-
-
-@Composable
-fun VirtualPetTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = lightColorScheme(
-            primary = Color(0xFF007AFF),
-            secondary = Color(0xFFFF9500),
-            background = Color(0xFFF5F5F5),
-            surface = Color.White
-        ),
-        content = content
-    )
-}

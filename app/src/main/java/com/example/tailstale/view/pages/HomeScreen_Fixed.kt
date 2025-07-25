@@ -201,13 +201,13 @@ private fun CompactStatusBar(
             Text(
                 text = label,
                 fontSize = 11.sp,
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = "$value%",
                 fontSize = 11.sp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
         }
 
@@ -217,7 +217,7 @@ private fun CompactStatusBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp)
-                .background(Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(3.dp))
+                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(3.dp))
         ) {
             val displayValue = if (isInverted) 100 - value else value
             val barColor = if (isInverted && value > 70) Color.Red else color
@@ -389,7 +389,7 @@ fun HomeScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
@@ -399,7 +399,7 @@ fun HomeScreen() {
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         }
 
@@ -438,7 +438,7 @@ fun HomeScreen() {
                     text = currentPet?.name ?: "Loading...",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Surface(
@@ -460,14 +460,14 @@ fun HomeScreen() {
                         "${pet.age} months old"
                     } ?: "Unknown age",
                     fontSize = 14.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
                 // NEW: Growth stage indicator
                 currentPet?.let { pet ->
                     Text(
                         text = pet.growthStage.name.lowercase().replaceFirstChar { it.uppercase() },
                         fontSize = 12.sp,
-                        color = Color(0xFF007AFF),
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -480,7 +480,7 @@ fun HomeScreen() {
         currentPet?.let { pet ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
@@ -725,7 +725,7 @@ fun HomeScreen() {
         // Pet care tips
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
                 modifier = Modifier.padding(16.dp)
@@ -734,7 +734,7 @@ fun HomeScreen() {
                     "Pet Care Tips",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -744,11 +744,10 @@ fun HomeScreen() {
                             "• Clean regularly to maintain health\n" +
                             "• Let your pet sleep to restore energy",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
         }
-
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -756,7 +755,7 @@ fun HomeScreen() {
         if (pets.size > 1) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(
@@ -768,7 +767,7 @@ fun HomeScreen() {
                         text = "Your Pets (${pets.size})",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
@@ -782,7 +781,7 @@ fun HomeScreen() {
                                     .height(100.dp)
                                     .clickable { petViewModel.selectPet(pet) },
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (currentPet?.id == pet.id) Color(0xFF007AFF) else Color(0xFFF8F8F8)
+                                    containerColor = if (currentPet?.id == pet.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = if (currentPet?.id == pet.id) 8.dp else 2.dp)
                             ) {
@@ -810,7 +809,7 @@ fun HomeScreen() {
                                         text = pet.name,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = if (currentPet?.id == pet.id) Color.White else Color.Black,
+                                        color = if (currentPet?.id == pet.id) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                                         textAlign = TextAlign.Center,
                                         maxLines = 1
                                     )
@@ -818,7 +817,7 @@ fun HomeScreen() {
                                     Text(
                                         text = "${pet.age}mo",
                                         fontSize = 8.sp,
-                                        color = if (currentPet?.id == pet.id) Color.White.copy(0.8f) else Color.Gray
+                                        color = if (currentPet?.id == pet.id) MaterialTheme.colorScheme.onPrimary.copy(0.8f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                     )
                                 }
                             }
@@ -831,3 +830,52 @@ fun HomeScreen() {
         }
     }
 }
+
+//@Composable
+//private fun CompactStatusBar(
+//    label: String,
+//    value: Int,
+//    color: Color,
+//    modifier: Modifier = Modifier,
+//    isInverted: Boolean = false
+//) {
+//    Column(
+//        modifier = modifier
+//    ) {
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            horizontalArrangement = Arrangement.SpaceBetween
+//        ) {
+//            Text(
+//                text = label,
+//                fontSize = 11.sp,
+//                color = MaterialTheme.colorScheme.onSurface,
+//                fontWeight = FontWeight.Medium
+//            )
+//            Text(
+//                text = "$value%",
+//                fontSize = 11.sp,
+//                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+//            )
+//        }
+//
+//        Spacer(modifier = Modifier.height(3.dp))
+//
+//        Box(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .height(6.dp)
+//                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(3.dp))
+//        ) {
+//            val displayValue = if (isInverted) 100 - value else value
+//            val barColor = if (isInverted && value > 70) Color.Red else color
+//
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth(displayValue / 100f)
+//                    .height(6.dp)
+//                    .background(barColor, RoundedCornerShape(3.dp))
+//            )
+//        }
+//    }
+//}

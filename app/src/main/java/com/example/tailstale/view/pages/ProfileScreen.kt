@@ -4,6 +4,7 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,8 +36,12 @@ import com.example.tailstale.model.Achievement
 import com.example.tailstale.repo.UserRepository
 import com.example.tailstale.viewmodel.ProfileViewModel
 import com.example.tailstale.viewmodel.ProfileViewModelFactory
+import com.example.tailstale.viewmodel.AchievementViewModel
+import com.example.tailstale.viewmodel.AchievementViewModelFactory
+import com.example.tailstale.service.AchievementManager
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -45,7 +50,6 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     var showEditDialog by remember { mutableStateOf(false) }
-    var showAchievementDialog by remember { mutableStateOf(false) }
     var showImagePicker by remember { mutableStateOf(false) }
 
     // Create ProfileViewModel with dependency injection
@@ -53,11 +57,28 @@ fun ProfileScreen(
         factory = ProfileViewModelFactory(userRepository)
     )
 
+    // Create AchievementViewModel to get real achievements
+    val achievementViewModel: AchievementViewModel = viewModel(
+        factory = AchievementViewModelFactory(AchievementManager())
+    )
+
     val userProfile = profileViewModel.userProfile
     val isLoading = profileViewModel.isLoading
     val isUploading = profileViewModel.isUploading
     val errorMessage = profileViewModel.errorMessage
     val isInitialized = profileViewModel.isInitialized
+
+    // Achievement states
+    val unlockedAchievements by achievementViewModel.unlockedAchievements.collectAsState()
+    val userStats by achievementViewModel.userStats.collectAsState()
+    val achievementProgress by achievementViewModel.achievementProgress.collectAsState()
+
+    // Load achievement data when screen loads
+    LaunchedEffect(Unit) {
+        FirebaseAuth.getInstance().currentUser?.uid?.let { userId ->
+            achievementViewModel.loadUserData(userId)
+        }
+    }
 
     // Permission handling for camera and storage
     val permissions = mutableListOf<String>().apply {
@@ -169,7 +190,7 @@ fun ProfileScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F5F5))
+                .background(MaterialTheme.colorScheme.background)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -189,8 +210,8 @@ fun ProfileScreen(
             item {
                 // Achievements Card
                 UserAchievementsCard(
-                    achievements = profile.achievements,
-                    onAddAchievement = { showAchievementDialog = true }
+                    achievements = unlockedAchievements, // Use real unlocked achievements
+                    onAddAchievement = { /* No-op, handled by AchievementViewModel */ }
                 )
             }
 
@@ -212,12 +233,12 @@ fun ProfileScreen(
                 )
             }
 
+            // App Version
             item {
-                // App Version
                 Text(
                     "Version 1.0.0",
                     fontSize = 12.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -231,20 +252,23 @@ fun ProfileScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f)),
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center
             ) {
                 Card(
                     modifier = Modifier.padding(32.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(
                         modifier = Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        CircularProgressIndicator()
-                        Text("Updating profile...")
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        Text(
+                            "Updating profile...",
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
@@ -318,16 +342,6 @@ fun ProfileScreen(
                 }
             )
         }
-
-        if (showAchievementDialog) {
-            AddAchievementDialog(
-                onDismiss = { showAchievementDialog = false },
-                onAdd = { title, description ->
-                    profileViewModel.addAchievement(title, description)
-                    showAchievementDialog = false
-                }
-            )
-        }
     }
 }
 
@@ -340,7 +354,7 @@ fun UserProfileHeaderCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -355,7 +369,7 @@ fun UserProfileHeaderCard(
                     .size(120.dp)
                     .clip(CircleShape)
                     .background(Color(0xFFFF9500))
-                    .border(3.dp, Color.White, CircleShape)
+                    .border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)
                     .clickable { onImageClick() },
                 contentAlignment = Alignment.Center
             ) {
@@ -395,15 +409,15 @@ fun UserProfileHeaderCard(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .size(36.dp)
-                        .background(Color(0xFF007AFF), CircleShape)
-                        .border(2.dp, Color.White, CircleShape),
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.CameraAlt,
                         contentDescription = "Change Photo",
                         modifier = Modifier.size(18.dp),
-                        tint = Color.White
+                        tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
@@ -415,14 +429,14 @@ fun UserProfileHeaderCard(
                 text = userModel.displayName,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             // User Email
             Text(
                 text = userModel.email,
                 fontSize = 16.sp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
 
             // Bio
@@ -430,7 +444,7 @@ fun UserProfileHeaderCard(
                 Text(
                     text = userModel.bio,
                     fontSize = 14.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
@@ -445,13 +459,13 @@ fun UserProfileHeaderCard(
                         Icons.Default.LocationOn,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = Color.Gray
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = userModel.location,
                         fontSize = 14.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -461,7 +475,10 @@ fun UserProfileHeaderCard(
             // Edit Profile Button
             OutlinedButton(
                 onClick = onEditProfile,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
             ) {
                 Icon(
                     Icons.Default.Edit,
@@ -528,12 +545,12 @@ fun StatItem(
 
 @Composable
 fun UserAchievementsCard(
-    achievements: List<Achievement>, // Fixed: Use Achievement from model instead of UserProfile.Achievement
+    achievements: List<Achievement>,
     onAddAchievement: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -542,14 +559,28 @@ fun UserAchievementsCard(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                "Achievements",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Achievements",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
 
-            // Achievement list - Fixed: Use Column instead of LazyColumn to prevent nested scrolling
+                // Show achievement count
+                Text(
+                    "${achievements.size} unlocked",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // Achievement list
             if (achievements.isNotEmpty()) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -564,33 +595,39 @@ fun UserAchievementsCard(
                         Text(
                             text = "... and ${achievements.size - 3} more achievements",
                             fontSize = 12.sp,
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
             } else {
-                Text(
-                    "No achievements yet. Complete tasks to earn achievements.",
-                    fontSize = 14.sp,
-                    color = Color.Gray,
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            // Add Achievement Button
-            OutlinedButton(
-                onClick = onAddAchievement,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Add Achievement")
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.EmojiEvents,
+                        contentDescription = "No achievements",
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "No achievements yet",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        "Complete tasks with your pet to earn achievements!",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             }
         }
     }
@@ -598,15 +635,15 @@ fun UserAchievementsCard(
 
 @Composable
 fun AchievementItem(
-    achievement: Achievement // Fixed: Use Achievement from model instead of UserProfile.Achievement
+    achievement: Achievement
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(8.dp))
-            .background(Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .clip(RoundedCornerShape(8.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier
@@ -623,12 +660,12 @@ fun AchievementItem(
                     text = achievement.name,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = achievement.description,
                     fontSize = 14.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
 
@@ -637,7 +674,7 @@ fun AchievementItem(
                 Icons.Default.Star,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = Color(0xFF007AFF)
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }
@@ -645,12 +682,12 @@ fun AchievementItem(
 
 @Composable
 fun PetsOverviewCard(
-    pets: List<com.example.tailstale.model.PetModel>, // Fixed: Use correct PetModel type
+    pets: List<com.example.tailstale.model.PetModel>,
     onManagePets: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -663,7 +700,7 @@ fun PetsOverviewCard(
                 "Your Pets",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             // Pet list or message
@@ -672,14 +709,14 @@ fun PetsOverviewCard(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(pets) { pet ->
-                        PetItem(pet = pet) // Create a proper pet item component
+                        PetItem(pet = pet)
                     }
                 }
             } else {
                 Text(
                     "No pets added yet. Tap the button below to add your first pet.",
                     fontSize = 14.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
                 )
             }
@@ -687,7 +724,10 @@ fun PetsOverviewCard(
             // Manage Pets Button
             OutlinedButton(
                 onClick = onManagePets,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
             ) {
                 Icon(
                     Icons.Default.Pets,
@@ -708,7 +748,7 @@ fun PetItem(pet: com.example.tailstale.model.PetModel) {
             .width(120.dp)
             .height(140.dp)
             .clip(RoundedCornerShape(12.dp)),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -737,7 +777,7 @@ fun PetItem(pet: com.example.tailstale.model.PetModel) {
                 text = pet.name,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 textAlign = TextAlign.Center
             )
@@ -746,7 +786,7 @@ fun PetItem(pet: com.example.tailstale.model.PetModel) {
             Text(
                 text = "${pet.type.lowercase().replaceFirstChar { it.uppercase() }} • ${pet.age}mo",
                 fontSize = 12.sp,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center
             )
 
@@ -764,33 +804,10 @@ fun PetItem(pet: com.example.tailstale.model.PetModel) {
                 Text(
                     text = "${pet.health}%",
                     fontSize = 10.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
         }
-    }
-}
-
-// Helper functions for pet display
-private fun getPetTypeColor(type: String): Color {
-    return when (type.uppercase()) {
-        "DOG" -> Color(0xFFD2691E)
-        "CAT" -> Color(0xFF708090)
-        "RABBIT" -> Color(0xFFDDA0DD)
-        "BIRD" -> Color(0xFF87CEEB)
-        "HAMSTER" -> Color(0xFFDAA520)
-        else -> Color(0xFFFF9500)
-    }
-}
-
-private fun getPetEmoji(type: String): String {
-    return when (type.uppercase()) {
-        "DOG" -> "🐕"
-        "CAT" -> "🐱"
-        "RABBIT" -> "🐰"
-        "BIRD" -> "🐦"
-        "HAMSTER" -> "🐹"
-        else -> "🐾"
     }
 }
 
@@ -801,7 +818,7 @@ fun AccountActionsCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -814,7 +831,7 @@ fun AccountActionsCard(
                 "Account",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -855,7 +872,7 @@ fun AccountActionItem(
     title: String,
     subtitle: String,
     icon: ImageVector,
-    textColor: Color = Color.Black,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
     onClick: () -> Unit = {}
 ) {
     Row(
@@ -869,7 +886,7 @@ fun AccountActionItem(
             icon,
             contentDescription = null,
             modifier = Modifier.size(24.dp),
-            tint = if (textColor == Color.Red) Color.Red else Color(0xFF007AFF)
+            tint = if (textColor == Color.Red) Color.Red else MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column(
@@ -884,14 +901,14 @@ fun AccountActionItem(
             Text(
                 subtitle,
                 fontSize = 14.sp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
         }
         Icon(
             Icons.Default.KeyboardArrowRight,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
-            tint = Color.Gray
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         )
     }
 }
@@ -1044,102 +1061,28 @@ fun ImagePickerDialog(
     )
 }
 
+// Utility functions for pet display
 @Composable
-fun AddAchievementDialog(
-    onDismiss: () -> Unit,
-    onAdd: (String, String) -> Unit
-) {
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text("Add Achievement")
-        },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Title") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onAdd(title, description)
-                }
-            ) {
-                Text("Add")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
+fun getPetTypeColor(petType: String): Color {
+    return when (petType.lowercase()) {
+        "dog" -> Color(0xFFE91E63) // Pink
+        "cat" -> Color(0xFF9C27B0) // Purple
+        "bird" -> Color(0xFF2196F3) // Blue
+        "fish" -> Color(0xFF00BCD4) // Cyan
+        "rabbit" -> Color(0xFF4CAF50) // Green
+        "hamster" -> Color(0xFFFF9800) // Orange
+        else -> Color(0xFF757575) // Gray for unknown types
+    }
 }
 
-@Composable
-fun ActionButton(
-    icon: ImageVector,
-    label: String,
-    description: String,
-    color: Color,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(80.dp)
-    ) {
-        Button(
-            onClick = onClick,
-            modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = color,
-                contentColor = Color.White
-            ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
-            contentPadding = PaddingValues(0.dp)
-        ) {
-            Icon(
-                icon,
-                contentDescription = label,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.Black,
-            textAlign = TextAlign.Center
-        )
-
-        Text(
-            text = description,
-            fontSize = 10.sp,
-            color = Color.Gray,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            lineHeight = 12.sp
-        )
+fun getPetEmoji(petType: String): String {
+    return when (petType.lowercase()) {
+        "dog" -> "🐕"
+        "cat" -> "🐱"
+        "bird" -> "🐦"
+        "fish" -> "🐠"
+        "rabbit" -> "🐰"
+        "hamster" -> "🐹"
+        else -> "🐾"
     }
 }

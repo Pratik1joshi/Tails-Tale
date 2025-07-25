@@ -39,7 +39,7 @@ fun StatsScreen(petViewModel: PetViewModel) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -48,7 +48,7 @@ fun StatsScreen(petViewModel: PetViewModel) {
             currentPet?.let { pet ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Column(
@@ -64,12 +64,12 @@ fun StatsScreen(petViewModel: PetViewModel) {
                                     text = pet.name,
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF007AFF)
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
                                     text = "${pet.type} • ${pet.age} months old",
                                     fontSize = 14.sp,
-                                    color = Color.Gray
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                 )
                             }
                             Row {
@@ -96,7 +96,7 @@ fun StatsScreen(petViewModel: PetViewModel) {
             } ?: run {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Box(
                         modifier = Modifier
@@ -107,7 +107,7 @@ fun StatsScreen(petViewModel: PetViewModel) {
                         Text(
                             text = "No pet selected",
                             fontSize = 16.sp,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -320,7 +320,7 @@ fun StatsScreen(petViewModel: PetViewModel) {
                             errorMessage.contains("✅") -> Color(0xFFE8F5E8)
                             errorMessage.contains("🚨") || errorMessage.contains("❌") -> Color(0xFFFFEBEE)
                             errorMessage.contains("⚠️") -> Color(0xFFFFF3E0)
-                            else -> Color(0xFFE3F2FD)
+                            else -> MaterialTheme.colorScheme.surfaceVariant
                         }
                     )
                 ) {
@@ -328,7 +328,8 @@ fun StatsScreen(petViewModel: PetViewModel) {
                         text = errorMessage,
                         modifier = Modifier.padding(16.dp),
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -341,7 +342,7 @@ fun StatsScreen(petViewModel: PetViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -352,12 +353,12 @@ fun StatsScreen(petViewModel: PetViewModel) {
 private fun StatsCard(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    headerColor: Color = Color(0xFF007AFF),
+    headerColor: Color = MaterialTheme.colorScheme.primary,
     content: @Composable () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -396,12 +397,13 @@ private fun StatBar(label: String, value: Int, color: Color) {
             Text(
                 text = label,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = "${value}%",
                 fontSize = 14.sp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
@@ -409,7 +411,7 @@ private fun StatBar(label: String, value: Int, color: Color) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(12.dp)
-                .background(Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
+                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
         ) {
             Box(
                 modifier = Modifier
@@ -425,7 +427,7 @@ private fun StatBar(label: String, value: Int, color: Color) {
 private fun DiseaseHistoryItem(disease: Map<String, Any>, dateFormat: SimpleDateFormat) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0).copy(alpha = 0.8f))
     ) {
         Column(
             modifier = Modifier.padding(12.dp)
@@ -439,14 +441,14 @@ private fun DiseaseHistoryItem(disease: Map<String, Any>, dateFormat: SimpleDate
             Text(
                 text = "Severity: ${disease["severity"]?.toString() ?: "Unknown"}",
                 fontSize = 12.sp,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
             disease["diagnosedDate"]?.let { timestamp ->
                 if (timestamp is Long) {
                     Text(
                         text = "Diagnosed: ${dateFormat.format(Date(timestamp))}",
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -454,7 +456,7 @@ private fun DiseaseHistoryItem(disease: Map<String, Any>, dateFormat: SimpleDate
                 Text(
                     text = "Treatment Cost: $${cost}",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
         }
@@ -547,7 +549,7 @@ private fun DiseaseRiskItem(risk: com.example.tailstale.service.DiseaseRiskAsses
 private fun VaccineRecordItem(vaccine: Map<String, Any>, dateFormat: SimpleDateFormat) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E8))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E8).copy(alpha = 0.8f))
     ) {
         Column(
             modifier = Modifier.padding(12.dp)
@@ -563,7 +565,7 @@ private fun VaccineRecordItem(vaccine: Map<String, Any>, dateFormat: SimpleDateF
                     Text(
                         text = "Administered: ${dateFormat.format(Date(timestamp))}",
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -572,7 +574,7 @@ private fun VaccineRecordItem(vaccine: Map<String, Any>, dateFormat: SimpleDateF
                     Text(
                         text = "Next due: ${dateFormat.format(Date(timestamp))}",
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
             }

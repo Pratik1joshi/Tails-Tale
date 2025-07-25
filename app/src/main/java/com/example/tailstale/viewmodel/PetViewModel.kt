@@ -17,7 +17,8 @@ import kotlinx.coroutines.launch
 class PetViewModel(
     private val petRepository: PetRepository,
     private val userRepository: UserRepository,
-    private val activityRepository: com.example.tailstale.repo.ActivityRepository = com.example.tailstale.repo.ActivityRepositoryImpl()
+    private val activityRepository: com.example.tailstale.repo.ActivityRepository = com.example.tailstale.repo.ActivityRepositoryImpl(),
+    private val achievementManager: com.example.tailstale.service.AchievementManager = com.example.tailstale.service.AchievementManager()
 ) : ViewModel() {
 
     private val _pets = MutableStateFlow<List<PetModel>>(emptyList())
@@ -60,6 +61,13 @@ class PetViewModel(
 
     private val _vaccinationRecommendations = MutableStateFlow<List<com.example.tailstale.service.VaccinationRecommendation>>(emptyList())
     val vaccinationRecommendations: StateFlow<List<com.example.tailstale.service.VaccinationRecommendation>> = _vaccinationRecommendations
+
+    // Add achievement-related states
+    private val _newlyUnlockedAchievements = MutableStateFlow<List<com.example.tailstale.model.Achievement>>(emptyList())
+    val newlyUnlockedAchievements: StateFlow<List<com.example.tailstale.model.Achievement>> = _newlyUnlockedAchievements
+
+    private val _userStats = MutableStateFlow<com.example.tailstale.model.UserStats?>(null)
+    val userStats: StateFlow<com.example.tailstale.model.UserStats?> = _userStats
 
     /**
      * Start real-time aging for a user's pets
@@ -114,57 +122,60 @@ class PetViewModel(
         _petAgingStats.value = petAgingService.getPetAgingStats(pet)
     }
 
-    fun createPet(name: String, petType: PetType, userId: String) {
-        viewModelScope.launch {
-            _loading.value = true
-            _error.value = null // Clear any previous errors
-
-            try {
-                val pet = PetModel(
-                    name = name,
-                    type = petType.name,
-                    age = 1, // Start at 1 month old
-                    ageInRealDays = 0,
-                    lastAgeUpdate = System.currentTimeMillis(),
-                    lastStatsDecay = System.currentTimeMillis()
-                )
-
-                // Create the pet first
-                petRepository.createPet(pet).fold(
-                    onSuccess = { createdPet ->
-                        // Link the pet to the user using the linkPetToUser method
-                        viewModelScope.launch {
-                            (petRepository as? com.example.tailstale.repo.PetRepositoryImpl)?.linkPetToUser(userId, createdPet.id)?.fold(
-                                onSuccess = {
-                                    // Successfully linked, now update UI state
-                                    _currentPet.value = createdPet
-                                    updatePetHealth(createdPet)
-                                    updatePetAgingStats(createdPet)
-
-                                    // Reload the user's pets to refresh the list
-                                    loadUserPets(userId)
-
-                                    _error.value = "Pet '${createdPet.name}' created successfully!"
-                                    _loading.value = false
-                                },
-                                onFailure = { linkError ->
-                                    _error.value = "Pet created but failed to link to user: ${linkError.message}"
-                                    _loading.value = false
-                                }
-                            )
-                        }
-                    },
-                    onFailure = { createError ->
-                        _error.value = "Failed to create pet: ${createError.message}"
-                        _loading.value = false
-                    }
-                )
-            } catch (e: Exception) {
-                _error.value = "Error creating pet: ${e.message}"
-                _loading.value = false
-            }
-        }
-    }
+//    fun createPet(name: String, petType: PetType, userId: String) {
+//        viewModelScope.launch {
+//            _loading.value = true
+//            _error.value = null // Clear any previous errors
+//
+//            try {
+//                val pet = PetModel(
+//                    name = name,
+//                    type = petType.name,
+//                    age = 1, // Start at 1 month old
+//                    ageInRealDays = 0,
+//                    lastAgeUpdate = System.currentTimeMillis(),
+//                    lastStatsDecay = System.currentTimeMillis()
+//                )
+//
+//                // Create the pet first
+//                petRepository.createPet(pet).fold(
+//                    onSuccess = { createdPet ->
+//                        // Link the pet to the user using the linkPetToUser method
+//                        viewModelScope.launch {
+//                            (petRepository as? com.example.tailstale.repo.PetRepositoryImpl)?.linkPetToUser(userId, createdPet.id)?.fold(
+//                                onSuccess = {
+//                                    // Successfully linked, now update UI state
+//                                    _currentPet.value = createdPet
+//                                    updatePetHealth(createdPet)
+//                                    updatePetAgingStats(createdPet)
+//
+//                                    // Track pet creation achievement
+//                                    trackAchievementAction("addPet", createdPet)
+//
+//                                    // Reload the user's pets to refresh the list
+//                                    loadUserPets(userId)
+//
+//                                    _error.value = "Pet '${createdPet.name}' created successfully!"
+//                                    _loading.value = false
+//                                },
+//                                onFailure = { linkError ->
+//                                    _error.value = "Pet created but failed to link to user: ${linkError.message}"
+//                                    _loading.value = false
+//                                }
+//                            )
+//                        }
+//                    },
+//                    onFailure = { createError ->
+//                        _error.value = "Failed to create pet: ${createError.message}"
+//                        _loading.value = false
+//                    }
+//                )
+//            } catch (e: Exception) {
+//                _error.value = "Error creating pet: ${e.message}"
+//                _loading.value = false
+//            }
+//        }
+//    }
 
     fun loadUserPets(userId: String) {
         viewModelScope.launch {
@@ -584,7 +595,7 @@ class PetViewModel(
     }
 
     /**
-     * Direct stats update method for immediate UI feedback with activity tracking
+     * Direct stats update method for immediate UI feedback with activity tracking and achievement tracking
      */
     fun updatePetStatsDirect(petId: String, statsUpdate: Map<String, Any>, activityType: String = "", videoRes: String? = null) {
         viewModelScope.launch {
@@ -615,6 +626,9 @@ class PetViewModel(
 
                                 // Update aging stats
                                 updatePetAgingStats(updatedPet)
+
+                                // Track achievement progress
+                                trackAchievementAction(activityType, updatedPet)
 
                                 // Record activity based on action type
                                 val activityTypeEnum = when (activityType.lowercase()) {
@@ -647,17 +661,25 @@ class PetViewModel(
                                         }
                                     }
 
-                                    recordActivity(
-                                        pet = updatedPet,
+                                    // Create ActivityRecord and record it
+                                    val activityRecord = com.example.tailstale.model.ActivityRecord(
+                                        petId = updatedPet.id,
+                                        petName = updatedPet.name,
                                         activityType = type,
+                                        activityName = activityType,
                                         duration = 10000, // 10 seconds for video activities
                                         statsChanged = statsChanged,
                                         videoPlayed = videoRes,
-                                        details = mapOf(
+                                        details = mapOf<String, Any>(
                                             "timestamp" to System.currentTimeMillis(),
                                             "actionSource" to "userInteraction"
                                         )
                                     )
+
+                                    // Record activity using the repository
+                                    viewModelScope.launch {
+                                        activityRepository.recordActivity(activityRecord)
+                                    }
                                 }
                             }
                         }
@@ -674,49 +696,108 @@ class PetViewModel(
     }
 
     /**
-     * Record an activity for a pet
+     * Track achievement progress based on user actions
      */
-    private suspend fun recordActivity(
-        pet: PetModel,
-        activityType: com.example.tailstale.model.ActivityType,
-        activityName: String = activityType.displayName,
-        duration: Long = 0,
-        statsChanged: Map<String, Int> = emptyMap(),
-        videoPlayed: String? = null,
-        details: Map<String, Any> = emptyMap()
-    ) {
-        try {
-            println("DEBUG: PetViewModel - Recording activity: ${activityType.displayName} for pet: ${pet.name}")
+    private fun trackAchievementAction(actionType: String, pet: PetModel) {
+        viewModelScope.launch {
+            try {
+                val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
 
-            val activity = com.example.tailstale.model.ActivityRecord(
-                petId = pet.id,
-                petName = pet.name,
-                activityType = activityType,
-                activityName = activityName,
-                timestamp = System.currentTimeMillis(),
-                duration = duration,
-                details = details,
-                statsChanged = statsChanged,
-                videoPlayed = videoPlayed, // Fixed: was videoRes, now videoPlayed
-                success = true
-            )
+                val additionalData: Map<String, Any> = mapOf(
+                    "petHealth" to pet.health,
+                    "petId" to pet.id,
+                    "petName" to pet.name
+                )
 
-            println("DEBUG: PetViewModel - Created activity record: $activity")
+                val newAchievements = achievementManager.updateUserStats(userId, actionType, additionalData)
 
-            val result = activityRepository.recordActivity(activity)
-            result.fold(
-                onSuccess = {
-                    println("DEBUG: PetViewModel - Activity recorded successfully!")
-                },
-                onFailure = { exception ->
-                    println("DEBUG: PetViewModel - Failed to record activity: ${exception.message}")
-                    Log.e("PetViewModel", "Failed to record activity: ${exception.message}")
+                if (newAchievements.isNotEmpty()) {
+                    _newlyUnlockedAchievements.value = newAchievements
+                    // Show achievement notification
+                    _error.value = "🎉 Achievement${if (newAchievements.size > 1) "s" else ""} Unlocked: ${newAchievements.joinToString(", ") { it.name }}!"
                 }
-            )
-        } catch (e: Exception) {
-            // Log error but don't fail the main operation
-            println("DEBUG: PetViewModel - Exception in recordActivity: ${e.message}")
-            Log.e("PetViewModel", "Failed to record activity: ${e.message}")
+
+                // Load updated user stats
+                val updatedStats = achievementManager.getUserStats(userId)
+                _userStats.value = updatedStats
+
+            } catch (e: Exception) {
+                Log.e("PetViewModel", "Failed to track achievement: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Load user achievement data
+     */
+    fun loadUserAchievements(userId: String) {
+        viewModelScope.launch {
+            try {
+                val stats = achievementManager.getUserStats(userId)
+                _userStats.value = stats
+            } catch (e: Exception) {
+                Log.e("PetViewModel", "Failed to load user achievements: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Clear newly unlocked achievements (after user has seen them)
+     */
+    fun clearNewlyUnlockedAchievements() {
+        _newlyUnlockedAchievements.value = emptyList()
+    }
+
+    /**
+     * Enhanced createPet method with achievement tracking
+     */
+    fun createPet(name: String, petType: PetType, userId: String) {
+        viewModelScope.launch {
+            _loading.value = true
+            _error.value = null
+
+            try {
+                val pet = PetModel(
+                    name = name,
+                    type = petType.name,
+                    age = 1,
+                    ageInRealDays = 0,
+                    lastAgeUpdate = System.currentTimeMillis(),
+                    lastStatsDecay = System.currentTimeMillis()
+                )
+
+                petRepository.createPet(pet).fold(
+                    onSuccess = { createdPet ->
+                        viewModelScope.launch {
+                            (petRepository as? com.example.tailstale.repo.PetRepositoryImpl)?.linkPetToUser(userId, createdPet.id)?.fold(
+                                onSuccess = {
+                                    _currentPet.value = createdPet
+                                    updatePetHealth(createdPet)
+                                    updatePetAgingStats(createdPet)
+
+                                    // Track pet creation achievement
+                                    trackAchievementAction("addPet", createdPet)
+
+                                    loadUserPets(userId)
+                                    _error.value = "Pet '${createdPet.name}' created successfully!"
+                                    _loading.value = false
+                                },
+                                onFailure = { linkError ->
+                                    _error.value = "Pet created but failed to link to user: ${linkError.message}"
+                                    _loading.value = false
+                                }
+                            )
+                        }
+                    },
+                    onFailure = { createError ->
+                        _error.value = "Failed to create pet: ${createError.message}"
+                        _loading.value = false
+                    }
+                )
+            } catch (e: Exception) {
+                _error.value = "Error creating pet: ${e.message}"
+                _loading.value = false
+            }
         }
     }
 }
