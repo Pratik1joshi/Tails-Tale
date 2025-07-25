@@ -70,6 +70,8 @@ fun ActivitiesScreen() {
         "Playing" -> activities.filter { it.activityType == com.example.tailstale.model.ActivityType.PLAYING }
         "Cleaning" -> activities.filter { it.activityType == com.example.tailstale.model.ActivityType.CLEANING }
         "Sleeping" -> activities.filter { it.activityType == com.example.tailstale.model.ActivityType.SLEEPING }
+        "Walking" -> activities.filter { it.activityType == com.example.tailstale.model.ActivityType.WALKING }
+        "Sitting" -> activities.filter { it.activityType == com.example.tailstale.model.ActivityType.SITTING }
         else -> activities
     }
 
@@ -117,7 +119,7 @@ fun ActivitiesScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Filter buttons
+        // Filter buttons - IMPROVED: Better layout for multiple filters
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color.White)
@@ -133,19 +135,40 @@ fun ActivitiesScreen() {
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // First row: Most common filters
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val filters = listOf("All", "Feeding", "Playing", "Cleaning", "Sleeping")
-                    filters.forEach { filter ->
+                    val primaryFilters = listOf("All", "Feeding", "Playing", "Walking")
+                    primaryFilters.forEach { filter ->
                         FilterChip(
                             onClick = { selectedFilter = filter },
-                            label = { Text(filter, fontSize = 12.sp) },
+                            label = { Text(filter, fontSize = 11.sp) },
                             selected = selectedFilter == filter,
                             modifier = Modifier.weight(1f)
                         )
                     }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Second row: Additional filters
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val secondaryFilters = listOf("Cleaning", "Sleeping", "Sitting")
+                    secondaryFilters.forEach { filter ->
+                        FilterChip(
+                            onClick = { selectedFilter = filter },
+                            label = { Text(filter, fontSize = 11.sp) },
+                            selected = selectedFilter == filter,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    // Add spacer to balance the row since we only have 3 items
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }

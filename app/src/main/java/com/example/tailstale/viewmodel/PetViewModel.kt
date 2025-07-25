@@ -325,133 +325,264 @@ class PetViewModel(
         }
     }
 
-    fun feedPet(foodId: String) {
+    /**
+     * NEW: Enhanced vaccination method with disease prevention check
+     */
+    fun administerVaccine(vaccineId: String, vaccineName: String) {
         _currentPet.value?.let { pet ->
             viewModelScope.launch {
-                val careAction = CareAction(
-                    action = CareActionType.FEED,
-                    itemUsed = foodId,
-                    effectOnPet = mapOf("hunger" to -20, "happiness" to 5)
+                _loading.value = true
+
+                val vaccineRecord = mapOf(
+                    "vaccineId" to vaccineId,
+                    "vaccineName" to vaccineName,
+                    "vaccineType" to vaccineName.split(" ").first(),
+                    "dateAdministered" to System.currentTimeMillis(),
+                    "effectiveUntil" to System.currentTimeMillis() + (365L * 24 * 60 * 60 * 1000),
+                    "administrationReason" to "Preventive healthcare"
                 )
 
-                val careActionMap: Map<String, Any> = mapOf(
-                    "action" to careAction.action.name,
-                    "itemUsed" to (careAction.itemUsed ?: ""),
-                    "effectOnPet" to careAction.effectOnPet,
-                    "timestamp" to careAction.timestamp
+                val healthBoost = 10 // Enhanced health boost for serious vaccination
+
+                val updatedPet = pet.copy(
+                    vaccineHistory = pet.vaccineHistory + (System.currentTimeMillis().toString() to vaccineRecord),
+                    health = minOf(100, pet.health + healthBoost)
                 )
 
-                val statsUpdate = mapOf(
-                    "hunger" to maxOf(0, pet.hunger - 20),
-                    "happiness" to minOf(100, pet.happiness + 5),
-                    "lastFed" to System.currentTimeMillis()
-                )
-
-                petRepository.addCareAction(pet.id, careAction)
-                petRepository.updatePetStats(pet.id, statsUpdate).fold(
+                petRepository.updatePet(updatedPet).fold(
                     onSuccess = {
-                        val updatedPet = pet.copy(
-                            hunger = maxOf(0, pet.hunger - 20),
-                            happiness = minOf(100, pet.happiness + 5),
-                            lastFed = System.currentTimeMillis(),
-                            careLog = pet.careLog + careActionMap
-                        )
                         _currentPet.value = updatedPet
-                        _error.value = null
+                        updatePetHealth(updatedPet)
+                        _error.value = "✅ ${pet.name} vaccinated with $vaccineName successfully!"
+                        _loading.value = false
                     },
                     onFailure = {
-                        _error.value = it.message
+                        _error.value = "❌ Failed to vaccinate: ${it.message}"
+                        _loading.value = false
                     }
                 )
             }
         }
     }
 
-    fun playWithPet(toyId: String) {
+    /**
+     * NEW: Treat an active disease and remove it from pet's conditions
+     */
+    fun treatDisease(diseaseName: String) {
         _currentPet.value?.let { pet ->
             viewModelScope.launch {
-                val careAction = CareAction(
-                    action = CareActionType.PLAY,
-                    itemUsed = toyId,
-                    effectOnPet = mapOf("happiness" to 15, "energy" to -10)
-                )
+                _loading.value = true
 
-                val careActionMap: Map<String, Any> = mapOf(
-                    "action" to careAction.action.name,
-                    "itemUsed" to (careAction.itemUsed ?: ""),
-                    "effectOnPet" to careAction.effectOnPet,
-                    "timestamp" to careAction.timestamp
-                )
+                // Find the disease in the pet's history
+                var diseaseFound = false
+                var treatmentCost = 0
+                var healthRecovered = 0
 
-                val statsUpdate = mapOf(
-                    "happiness" to minOf(100, pet.happiness + 15),
-                    "energy" to maxOf(0, pet.energy - 10),
-                    "lastPlayed" to System.currentTimeMillis()
-                )
+                val updatedDiseaseHistory = pet.diseaseHistory.toMutableMap()
 
-                petRepository.addCareAction(pet.id, careAction)
-                petRepository.updatePetStats(pet.id, statsUpdate).fold(
-                    onSuccess = {
-                        val updatedPet = pet.copy(
-                            happiness = minOf(100, pet.happiness + 15),
-                            energy = maxOf(0, pet.energy - 10),
-                            lastPlayed = System.currentTimeMillis(),
-                            careLog = pet.careLog + careActionMap
-                        )
-                        _currentPet.value = updatedPet
-                        _error.value = null
-                    },
-                    onFailure = {
-                        _error.value = it.message
+                // Look for the active disease
+                updatedDiseaseHistory.entries.forEach { (key, value) ->
+                    val diseaseData = value as? Map<String, Any>
+                    if (diseaseData?.get("diseaseName")?.toString() == diseaseName) {
+                        val diagnosedDate = diseaseData["diagnosedDate"] as? Long ?: 0L
+                        val daysSince = (System.currentTimeMillis() - diagnosedDate) / (1000 * 60 * 60 * 24)
+
+                        // Only treat if disease is still active (within 30 days)
+                        if (daysSince <= 30) {
+                            diseaseFound = true
+                            treatmentCost = diseaseData["treatmentCost"] as? Int ?: 100
+
+                            // Calculate health recovery based on severity
+                            val severity = diseaseData["severity"]?.toString() ?: "MILD"
+                            healthRecovered = when (severity) {
+                                "SEVERE" -> 30
+                                "MODERATE" -> 20
+                                "MILD" -> 15
+                                else -> 10
+                            }
+
+                            // Mark disease as treated
+                            updatedDiseaseHistory[key] = diseaseData + mapOf(
+                                "treatmentDate" to System.currentTimeMillis(),
+                                "status" to "TREATED",
+                                "treatmentCost" to treatmentCost
+                            )
+                        }
                     }
-                )
+                }
+
+                if (diseaseFound) {
+                    val updatedPet = pet.copy(
+                        health = minOf(100, pet.health + healthRecovered),
+                        diseaseHistory = updatedDiseaseHistory
+                    )
+
+                    petRepository.updatePet(updatedPet).fold(
+                        onSuccess = {
+                            _currentPet.value = updatedPet
+                            updatePetHealth(updatedPet)
+                            _error.value = "✅ $diseaseName treated successfully! Health recovered: +$healthRecovered. Treatment cost: $$treatmentCost"
+                            _loading.value = false
+                        },
+                        onFailure = {
+                            _error.value = "❌ Treatment completed but failed to update pet: ${it.message}"
+                            _loading.value = false
+                        }
+                    )
+                } else {
+                    _error.value = "❌ No active $diseaseName found to treat"
+                    _loading.value = false
+                }
             }
         }
     }
 
-    fun cleanPet() {
+    /**
+     * NEW: Emergency health check - forces immediate health assessment
+     */
+    fun performEmergencyHealthCheck() {
         _currentPet.value?.let { pet ->
             viewModelScope.launch {
-                val careAction = CareAction(
-                    action = CareActionType.CLEAN,
-                    effectOnPet = mapOf("cleanliness" to 25, "happiness" to 5)
-                )
+                _loading.value = true
 
-                val careActionMap: Map<String, Any> = mapOf(
-                    "action" to careAction.action.name,
-                    "effectOnPet" to careAction.effectOnPet,
-                    "timestamp" to careAction.timestamp
-                )
+                // Check for active diseases (diagnosed within last 30 days)
+                val activeDiseases = mutableListOf<String>()
+                pet.diseaseHistory.forEach { (_, diseaseData) ->
+                    val diseaseMap = diseaseData as? Map<String, Any>
+                    if (diseaseMap != null) {
+                        val diagnosedDate = diseaseMap["diagnosedDate"] as? Long ?: 0L
+                        val daysSince = (System.currentTimeMillis() - diagnosedDate) / (1000 * 60 * 60 * 24)
+                        val status = diseaseMap["status"]?.toString()
 
-                val statsUpdate = mapOf(
-                    "cleanliness" to minOf(100, pet.cleanliness + 25),
-                    "happiness" to minOf(100, pet.happiness + 5),
-                    "lastCleaned" to System.currentTimeMillis()
-                )
-
-                petRepository.addCareAction(pet.id, careAction)
-                petRepository.updatePetStats(pet.id, statsUpdate).fold(
-                    onSuccess = {
-                        val updatedPet = pet.copy(
-                            cleanliness = minOf(100, pet.cleanliness + 25),
-                            happiness = minOf(100, pet.happiness + 5),
-                            lastCleaned = System.currentTimeMillis(),
-                            careLog = pet.careLog + careActionMap
-                        )
-                        _currentPet.value = updatedPet
-                        _error.value = null
-                    },
-                    onFailure = {
-                        _error.value = it.message
+                        if (daysSince <= 30 && status != "TREATED") {
+                            val diseaseName = diseaseMap["diseaseName"]?.toString() ?: "Unknown"
+                            val severity = diseaseMap["severity"]?.toString() ?: "MILD"
+                            activeDiseases.add("$diseaseName ($severity)")
+                        }
                     }
-                )
+                }
+
+                // Check vaccination status
+                val missedVaccines = mutableListOf<String>()
+                val petAge = pet.age
+
+                // Check for core vaccines based on age
+                when {
+                    petAge >= 6 && petAge <= 8 -> {
+                        if (!hasVaccine(pet, "DHPP First Dose")) {
+                            missedVaccines.add("DHPP First Dose (CRITICAL)")
+                        }
+                    }
+                    petAge >= 10 && petAge <= 12 -> {
+                        if (!hasVaccine(pet, "DHPP Second Dose")) {
+                            missedVaccines.add("DHPP Second Dose (CRITICAL)")
+                        }
+                    }
+                    petAge >= 14 && petAge <= 16 -> {
+                        if (!hasVaccine(pet, "DHPP Final Booster")) {
+                            missedVaccines.add("DHPP Final Booster (CRITICAL)")
+                        }
+                        if (!hasVaccine(pet, "Rabies First Dose")) {
+                            missedVaccines.add("Rabies First Dose (LEGALLY REQUIRED)")
+                        }
+                    }
+                }
+
+                val emergencyActions = mutableListOf<String>()
+
+                if (activeDiseases.isNotEmpty()) {
+                    emergencyActions.add("🚨 URGENT: ${activeDiseases.size} active disease(s): ${activeDiseases.joinToString(", ")}")
+                }
+
+                if (missedVaccines.isNotEmpty()) {
+                    emergencyActions.add("⚠️ CRITICAL: Missing vaccines: ${missedVaccines.joinToString(", ")}")
+                }
+
+                if (pet.health < 30) {
+                    emergencyActions.add("💔 CRITICAL: Health is dangerously low (${pet.health}%)")
+                }
+
+                _error.value = if (emergencyActions.isNotEmpty()) {
+                    "🏥 HEALTH ALERT: ${emergencyActions.joinToString(" | ")}"
+                } else {
+                    "✅ Emergency health check complete - ${pet.name} is healthy!"
+                }
+
+                _loading.value = false
             }
         }
     }
 
+    /**
+     * Helper function to check if pet has received a specific vaccine
+     */
+    private fun hasVaccine(pet: PetModel, vaccineName: String): Boolean {
+        return pet.vaccineHistory.values.any { vaccineData ->
+            val vaccineMap = vaccineData as? Map<String, Any>
+            val name = vaccineMap?.get("vaccineName")?.toString() ?: ""
+            name.contains(vaccineName, ignoreCase = true) || vaccineName.contains(name, ignoreCase = true)
+        }
+    }
+
+    /**
+     * NEW: Get active diseases that need treatment
+     */
+    fun getActiveDiseases(): List<Map<String, Any>> {
+        val pet = _currentPet.value ?: return emptyList()
+        val activeDiseases = mutableListOf<Map<String, Any>>()
+
+        pet.diseaseHistory.forEach { (_, diseaseData) ->
+            val diseaseMap = diseaseData as? Map<String, Any>
+            if (diseaseMap != null) {
+                val diagnosedDate = diseaseMap["diagnosedDate"] as? Long ?: 0L
+                val daysSince = (System.currentTimeMillis() - diagnosedDate) / (1000 * 60 * 60 * 24)
+                val status = diseaseMap["status"]?.toString()
+
+                if (daysSince <= 30 && status != "TREATED") {
+                    activeDiseases.add(diseaseMap + mapOf("daysSinceDiagnosis" to daysSince.toInt()))
+                }
+            }
+        }
+
+        return activeDiseases.sortedByDescending {
+            val severity = it["severity"]?.toString() ?: "MILD"
+            when (severity) {
+                "SEVERE" -> 3
+                "MODERATE" -> 2
+                "MILD" -> 1
+                else -> 0
+            }
+        }
+    }
+
+    /**
+     * Get activities for current user's pets
+     */
+    suspend fun getUserActivities(userId: String): Result<List<com.example.tailstale.model.ActivityRecord>> {
+        return activityRepository.getActivitiesByUserId(userId)
+    }
+
+    /**
+     * Get recent activities with limit
+     */
+    suspend fun getRecentActivities(userId: String, limit: Int = 50): Result<List<com.example.tailstale.model.ActivityRecord>> {
+        return activityRepository.getRecentActivities(userId, limit)
+    }
+
+    /**
+     * Get activity statistics for a pet
+     */
+    suspend fun getActivityStats(petId: String, days: Int = 7): Result<Map<String, Int>> {
+        return activityRepository.getActivityStats(petId, days)
+    }
+
+    /**
+     * Clear the error state
+     */
     fun clearError() {
         _error.value = null
     }
+
     /**
      * Direct stats update method for immediate UI feedback with activity tracking
      */
@@ -566,7 +697,7 @@ class PetViewModel(
                 duration = duration,
                 details = details,
                 statsChanged = statsChanged,
-                videoPlayed = videoPlayed,
+                videoPlayed = videoPlayed, // Fixed: was videoRes, now videoPlayed
                 success = true
             )
 
@@ -587,26 +718,5 @@ class PetViewModel(
             println("DEBUG: PetViewModel - Exception in recordActivity: ${e.message}")
             Log.e("PetViewModel", "Failed to record activity: ${e.message}")
         }
-    }
-
-    /**
-     * Get activities for current user's pets
-     */
-    suspend fun getUserActivities(userId: String): Result<List<com.example.tailstale.model.ActivityRecord>> {
-        return activityRepository.getActivitiesByUserId(userId)
-    }
-
-    /**
-     * Get recent activities with limit
-     */
-    suspend fun getRecentActivities(userId: String, limit: Int = 50): Result<List<com.example.tailstale.model.ActivityRecord>> {
-        return activityRepository.getRecentActivities(userId, limit)
-    }
-
-    /**
-     * Get activity statistics for a pet
-     */
-    suspend fun getActivityStats(petId: String, days: Int = 7): Result<Map<String, Int>> {
-        return activityRepository.getActivityStats(petId, days)
     }
 }

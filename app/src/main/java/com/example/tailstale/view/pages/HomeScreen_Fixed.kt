@@ -352,6 +352,25 @@ fun HomeScreen() {
                         )
                         petViewModel.updatePetStatsDirect(pet.id, statsUpdate, "sleep", "pupsleeping")
                     }
+                    "walk" -> {
+                        val statsUpdate = mapOf(
+                            "energy" to maxOf(0, pet.energy - 10), // Walking uses energy
+                            "happiness" to minOf(100, pet.happiness + 25), // Walking makes pets very happy
+                            "health" to minOf(100, pet.health + 15), // Great exercise for health
+                            "hunger" to minOf(100, pet.hunger + 10), // Exercise increases appetite
+                            "cleanliness" to maxOf(0, pet.cleanliness - 5) // Gets a bit dirty from walking
+                        )
+                        petViewModel.updatePetStatsDirect(pet.id, statsUpdate, "walk", "pupwalking")
+                    }
+                    "rest", "sit" -> {
+                        val statsUpdate = mapOf(
+                            "energy" to minOf(100, pet.energy + 15), // Sitting restores some energy
+                            "happiness" to minOf(100, pet.happiness + 8), // Content from resting
+                            "health" to minOf(100, pet.health + 3) // Light rest helps health
+                        )
+                        petViewModel.updatePetStatsDirect(pet.id, statsUpdate, "sit", "pupsitting")
+                    }
+
                 }
             }
 
@@ -659,16 +678,6 @@ fun HomeScreen() {
                     isEnabled = isActionEnabled,
                     label = "Sit"
                 )
-
-                // Bathing icon action
-                PetOverlayIcon(
-                    painter = painterResource(id = R.drawable.baseline_bathtub_24),
-                    onClick = {
-                        performAction(videoRes = R.raw.pupbathing, actionType = "clean")
-                    },
-                    isEnabled = isActionEnabled,
-                    label = "Bath"
-                )
             }
 
             // Right-side icons
@@ -679,11 +688,11 @@ fun HomeScreen() {
                     .zIndex(1f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Walking icon actions
+                // Walking icon actions - FIXED: Changed from "play" to "walk"
                 PetOverlayIcon(
                     painter = painterResource(id = R.drawable.baseline_directions_walk_24),
                     onClick = {
-                        performAction(videoRes = R.raw.pupwalking, actionType = "play")
+                        performAction(videoRes = R.raw.pupwalking, actionType = "walk")
                     },
                     isEnabled = isActionEnabled,
                     label = "Walk"
@@ -707,16 +716,6 @@ fun HomeScreen() {
                     },
                     isEnabled = isActionEnabled,
                     label = "Play"
-                )
-
-                // Health icon actions
-                PetOverlayIcon(
-                    painter = painterResource(id = R.drawable.outline_local_hospital_24),
-                    onClick = {
-                        performAction(videoRes = R.raw.pupvaccination, actionType = "health")
-                    },
-                    isEnabled = isActionEnabled,
-                    label = "Health"
                 )
             }
         }

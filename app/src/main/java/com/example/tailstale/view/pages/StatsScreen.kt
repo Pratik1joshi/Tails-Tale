@@ -23,6 +23,10 @@ import java.util.*
 @Composable
 fun StatsScreen(petViewModel: PetViewModel) {
     val currentPet by petViewModel.currentPet.collectAsState()
+    val loading by petViewModel.loading.collectAsState()
+    val error by petViewModel.error.collectAsState()
+
+    // Enhanced health management states
     val requiredVaccines by petViewModel.requiredVaccines.collectAsState()
     val overdueVaccines by petViewModel.overdueVaccines.collectAsState()
     val diseaseRisks by petViewModel.diseaseRisks.collectAsState()
@@ -68,12 +72,24 @@ fun StatsScreen(petViewModel: PetViewModel) {
                                     color = Color.Gray
                                 )
                             }
-                            Icon(
-                                Icons.Default.Pets,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = Color(0xFFFF9500)
-                            )
+                            Row {
+                                // Emergency Health Check Button
+                                IconButton(
+                                    onClick = { petViewModel.performEmergencyHealthCheck() }
+                                ) {
+                                    Icon(
+                                        Icons.Default.MedicalServices,
+                                        contentDescription = "Emergency Health Check",
+                                        tint = Color(0xFFF44336)
+                                    )
+                                }
+                                Icon(
+                                    Icons.Default.Pets,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = Color(0xFFFF9500)
+                                )
+                            }
                         }
                     }
                 }
@@ -98,11 +114,49 @@ fun StatsScreen(petViewModel: PetViewModel) {
             }
         }
 
+        // Active Diseases - CRITICAL SECTION
+        item {
+            currentPet?.let { pet ->
+                val activeDiseases = petViewModel.getActiveDiseases()
+                if (activeDiseases.isNotEmpty()) {
+                    StatsCard(
+                        title = "🚨 ACTIVE DISEASES - NEEDS TREATMENT",
+                        icon = Icons.Default.LocalHospital,
+                        headerColor = Color(0xFFF44336)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            activeDiseases.forEach { disease ->
+                                ActiveDiseaseItem(disease, petViewModel)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Critical Vaccines Section
+        item {
+            if (requiredVaccines.isNotEmpty() || overdueVaccines.isNotEmpty()) {
+                val criticalVaccines = requiredVaccines + overdueVaccines
+                StatsCard(
+                    title = "💉 CRITICAL VACCINES NEEDED",
+                    icon = Icons.Default.Vaccines,
+                    headerColor = Color(0xFFFF9800)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        criticalVaccines.forEach { vaccine ->
+                            CriticalVaccineItem(vaccine, petViewModel)
+                        }
+                    }
+                }
+            }
+        }
+
         // Current Stats
         item {
             currentPet?.let { pet ->
                 StatsCard(
-                    title = "Current Stats",
+                    title = "Current Health Stats",
                     icon = Icons.Default.BarChart
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -116,25 +170,34 @@ fun StatsScreen(petViewModel: PetViewModel) {
             }
         }
 
-        // Disease History
+        // Disease History - Only treated/past diseases
         item {
             currentPet?.let { pet ->
-                if (pet.diseaseHistory.isNotEmpty()) {
+                val treatedDiseases = pet.diseaseHistory.filter { (_, diseaseData) ->
+                    val diseaseMap = diseaseData as? Map<String, Any>
+                    val status = diseaseMap?.get("status")?.toString()
+                    val diagnosedDate = diseaseMap?.get("diagnosedDate") as? Long ?: 0L
+                    val daysSince = (System.currentTimeMillis() - diagnosedDate) / (1000 * 60 * 60 * 24)
+
+                    status == "TREATED" || daysSince > 30
+                }
+
+                if (treatedDiseases.isNotEmpty()) {
                     StatsCard(
-                        title = "Disease History",
-                        icon = Icons.Default.LocalHospital
+                        title = "Medical History",
+                        icon = Icons.Default.History
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            // Fix: diseaseHistory is Map<String, Any> where each entry.value contains the disease data
-                            pet.diseaseHistory.forEach { (key, value) ->
+                            treatedDiseases.forEach { (key, value) ->
                                 val diseaseMap = value as? Map<String, Any> ?: mapOf(
                                     "diseaseName" to (value.toString()),
                                     "severity" to "Unknown",
                                     "diagnosedDate" to System.currentTimeMillis(),
                                     "treatmentCost" to 0,
-                                    "symptoms" to emptyList<String>()
+                                    "symptoms" to emptyList<String>(),
+                                    "status" to "PAST"
                                 )
-                                DiseaseHistoryItem(diseaseMap, dateFormat)
+                                TreatedDiseaseHistoryItem(diseaseMap, dateFormat)
                             }
                         }
                     }
@@ -142,17 +205,26 @@ fun StatsScreen(petViewModel: PetViewModel) {
             }
         }
 
-        // Disease Warnings
+        // Vaccination Records - Only show administered vaccines
         item {
-            if (diseaseWarnings.isNotEmpty()) {
-                StatsCard(
-                    title = "Health Warnings",
-                    icon = Icons.Default.Warning,
-                    headerColor = Color(0xFFF44336)
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        diseaseWarnings.take(5).forEach { warning ->
-                            DiseaseWarningItem(warning)
+            currentPet?.let { pet ->
+                if (pet.vaccineHistory.isNotEmpty()) {
+                    StatsCard(
+                        title = "Vaccination Records",
+                        icon = Icons.Default.CheckCircle,
+                        headerColor = Color(0xFF4CAF50)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            pet.vaccineHistory.forEach { (key, value) ->
+                                val vaccineMap = value as? Map<String, Any> ?: mapOf(
+                                    "vaccineName" to (value.toString()),
+                                    "vaccineId" to key,
+                                    "vaccineType" to "Unknown",
+                                    "dateAdministered" to System.currentTimeMillis(),
+                                    "nextDueDate" to System.currentTimeMillis()
+                                )
+                                VaccineRecordItem(vaccineMap, dateFormat)
+                            }
                         }
                     }
                 }
@@ -175,60 +247,17 @@ fun StatsScreen(petViewModel: PetViewModel) {
             }
         }
 
-        // Vaccine Records
+        // Disease Warnings
         item {
-            currentPet?.let { pet ->
-                if (pet.vaccineHistory.isNotEmpty()) {
-                    StatsCard(
-                        title = "Vaccination Records",
-                        icon = Icons.Default.Vaccines
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            // Fix: vaccineHistory is Map<String, Any> where each entry.value contains the vaccine data
-                            pet.vaccineHistory.forEach { (key, value) ->
-                                val vaccineMap = value as? Map<String, Any> ?: mapOf(
-                                    "vaccineName" to (value.toString()),
-                                    "vaccineId" to key,
-                                    "vaccineType" to "Unknown",
-                                    "dateAdministered" to System.currentTimeMillis(),
-                                    "nextDueDate" to System.currentTimeMillis()
-                                )
-                                VaccineRecordItem(vaccineMap, dateFormat)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Required Vaccines
-        item {
-            if (requiredVaccines.isNotEmpty()) {
+            if (diseaseWarnings.isNotEmpty()) {
                 StatsCard(
-                    title = "Required Vaccines",
-                    icon = Icons.Default.Schedule,
-                    headerColor = Color(0xFF2196F3)
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        requiredVaccines.forEach { vaccine ->
-                            RequiredVaccineItem(vaccine, petViewModel)
-                        }
-                    }
-                }
-            }
-        }
-
-        // Overdue Vaccines
-        item {
-            if (overdueVaccines.isNotEmpty()) {
-                StatsCard(
-                    title = "Overdue Vaccines",
-                    icon = Icons.Default.Error,
+                    title = "Health Warnings",
+                    icon = Icons.Default.Warning,
                     headerColor = Color(0xFFF44336)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        overdueVaccines.forEach { vaccine ->
-                            OverdueVaccineItem(vaccine, petViewModel)
+                        diseaseWarnings.take(5).forEach { warning ->
+                            DiseaseWarningItem(warning)
                         }
                     }
                 }
@@ -277,6 +306,42 @@ fun StatsScreen(petViewModel: PetViewModel) {
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // Error/Status Messages
+        error?.let { errorMessage ->
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = when {
+                            errorMessage.contains("✅") -> Color(0xFFE8F5E8)
+                            errorMessage.contains("🚨") || errorMessage.contains("❌") -> Color(0xFFFFEBEE)
+                            errorMessage.contains("⚠️") -> Color(0xFFFFF3E0)
+                            else -> Color(0xFFE3F2FD)
+                        }
+                    )
+                ) {
+                    Text(
+                        text = errorMessage,
+                        modifier = Modifier.padding(16.dp),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        // Loading indicator
+        if (loading) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
             }
         }
@@ -631,6 +696,302 @@ private fun VaccinationRecommendationItem(recommendation: com.example.tailstale.
                 fontSize = 11.sp,
                 color = Color.Gray
             )
+        }
+    }
+}
+
+@Composable
+private fun ActiveDiseaseItem(disease: Map<String, Any>, petViewModel: PetViewModel) {
+    val diseaseName = disease["diseaseName"]?.toString() ?: "Unknown Disease"
+    val severity = disease["severity"]?.toString() ?: "MILD"
+    val daysSince = disease["daysSinceDiagnosis"] as? Int ?: 0
+    
+    val diseaseColor = when (severity) {
+        "SEVERE" -> Color(0xFFF44336)
+        "MODERATE" -> Color(0xFFFF9800)
+        "MILD" -> Color(0xFFFFEB3B)
+        else -> Color(0xFF4CAF50)
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = diseaseColor.copy(alpha = 0.1f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "🚨 $diseaseName",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = diseaseColor
+                    )
+                    Text(
+                        text = "Severity: $severity",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = "Active for $daysSince days",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                    if (daysSince > 7) {
+                        Text(
+                            text = "⚠️ URGENT: Requires immediate treatment!",
+                            fontSize = 12.sp,
+                            color = Color(0xFFF44336),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Icon(
+                    Icons.Default.LocalHospital,
+                    contentDescription = null,
+                    tint = diseaseColor,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Treatment cost info
+            disease["treatmentCost"]?.let { cost ->
+                Text(
+                    text = "Treatment Cost: $$cost",
+                    fontSize = 13.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = { petViewModel.treatDisease(diseaseName) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        Icons.Default.Healing,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("TREAT NOW", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+
+                OutlinedButton(
+                    onClick = { /* View symptoms */ },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Details", fontSize = 12.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CriticalVaccineItem(vaccine: com.example.tailstale.model.VaccineModel, petViewModel: PetViewModel) {
+    val currentPet by petViewModel.currentPet.collectAsState()
+    val isOverdue = vaccine.ageRequirement.first <= (currentPet?.age ?: 0)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isOverdue) Color(0xFFFFEBEE) else Color(0xFFFFF3E0)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isOverdue) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = null,
+                                tint = Color(0xFFF44336),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        Text(
+                            text = vaccine.name,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isOverdue) Color(0xFFF44336) else Color(0xFFFF9800)
+                        )
+                    }
+
+                    Text(
+                        text = vaccine.description,
+                        fontSize = 13.sp,
+                        color = Color.Gray
+                    )
+
+                    Text(
+                        text = "Protects against: ${vaccine.targetDisease}",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+
+                    Text(
+                        text = "Cost: $${vaccine.cost}",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    if (isOverdue) {
+                        Text(
+                            text = "⚠️ OVERDUE - Risk of infection increasing!",
+                            fontSize = 12.sp,
+                            color = Color(0xFFF44336),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Icon(
+                    Icons.Default.Vaccines,
+                    contentDescription = null,
+                    tint = if (isOverdue) Color(0xFFF44336) else Color(0xFFFF9800),
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Action button
+            Button(
+                onClick = { petViewModel.administerVaccine(vaccine.id, vaccine.name) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isOverdue) Color(0xFFF44336) else Color(0xFF2196F3)
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    Icons.Default.Vaccines,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    if (isOverdue) "ADMINISTER URGENT" else "ADMINISTER VACCINE",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TreatedDiseaseHistoryItem(disease: Map<String, Any>, dateFormat: SimpleDateFormat) {
+    val status = disease["status"]?.toString()
+    val isRecent = status == "TREATED"
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isRecent) Color(0xFFE8F5E8) else Color(0xFFF5F5F5)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = disease["diseaseName"]?.toString() ?: "Unknown Disease",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isRecent) Color(0xFF2E7D32) else Color.Gray
+                    )
+                    Text(
+                        text = "Severity: ${disease["severity"]?.toString() ?: "Unknown"}",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+
+                if (isRecent) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.History,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            // Date information
+            disease["diagnosedDate"]?.let { timestamp ->
+                if (timestamp is Long) {
+                    Text(
+                        text = "Diagnosed: ${dateFormat.format(Date(timestamp))}",
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+
+            disease["treatmentDate"]?.let { timestamp ->
+                if (timestamp is Long) {
+                    Text(
+                        text = "✅ Treated: ${dateFormat.format(Date(timestamp))}",
+                        fontSize = 11.sp,
+                        color = Color(0xFF4CAF50),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            disease["treatmentCost"]?.let { cost ->
+                Text(
+                    text = "Treatment Cost: $$cost",
+                    fontSize = 11.sp,
+                    color = Color.Gray
+                )
+            }
         }
     }
 }
