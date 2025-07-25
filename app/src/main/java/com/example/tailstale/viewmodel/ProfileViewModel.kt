@@ -369,7 +369,18 @@ class ProfileViewModel(
     /**
      * Sign out user
      */
-
+    fun signOut() {
+        try {
+            auth.signOut()
+            userProfile = null
+            isInitialized = false
+            errorMessage = null
+            Log.d(TAG, "User signed out successfully")
+        } catch (e: Exception) {
+            errorMessage = "Failed to sign out: ${e.message}"
+            Log.e(TAG, "Exception signing out", e)
+        }
+    }
 
     /**
      * Set error message
