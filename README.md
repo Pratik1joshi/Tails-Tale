@@ -226,22 +226,17 @@ We welcome contributions to TailsTale! Please follow these steps:
 - **[Prajwal Bhandari, Frontend developer]**
 - **[Hemanta budhathoki, backend developer]**
 - **[Sujal Bajracharya, UI/UX Design]**
-- **[Rahul Kumar Sharma, tester]**   - *Project Lead & Lead Developer* - [@yourgithub](https://github.com/yourgithub)
+- **[Rahul Kumar Sharma, tester]**   -
 
-*Want to contribute? See our [Contributing Guidelines](#-contributing) above!*
+
 
 ## 🙏 Acknowledgments
 
 - Inspired by classic virtual pet games like Tamagotchi
 - Firebase team for excellent backend services
 - Android development community for continued support
-- Beta testers and early adopters for valuable feedback
 
-## 📞 Support
 
-- **Issues:** [GitHub Issues](https://github.com/yourusername/tailstale/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/tailstale/discussions)
-- **Discord:** [Join our community](https://discord.gg/tailstale)
 
 ---
 
