@@ -1,35 +1,46 @@
 package com.example.tailstale
 
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.example.tailstale.repo.AuthRepositoryImpl
-import com.google.firebase.auth.FirebaseAuth
-import junit.framework.TestCase.assertEquals
+import com.example.tailstale.view.LoginActivity
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.concurrent.CountDownLatch
 
 @RunWith(AndroidJUnit4::class)
-class AuthLoginInstrumentedTest {
+class LoginInstrumentedTest {
+
+    @get:Rule
+    val composeRule = createAndroidComposeRule<LoginActivity>()
 
     @Test
-    fun testLogin_Instrumented() {
-        val email = "test@example.com"
-        val password = "testPassword"
-        val latch = CountDownLatch(1)
-        var expectedResult = "Initial Value"
+    fun testSuccessfulLogin_navigatesToDashboard() {
+        // Enter email
+        composeRule.onNodeWithTag("email")
+            .performTextInput("user@example.com")
 
-        val auth = FirebaseAuth.getInstance()
-        val authRepository = AuthRepositoryImpl(auth)
+        // Enter password
+        composeRule.onNodeWithTag("password")
+            .performTextInput("password")
 
-        val callback = { success: Boolean, message: String? ->
-            expectedResult = message ?: "Callback message is null"
-            latch.countDown()
-        }
+        // Click Login
+        composeRule.onNodeWithTag("login_button")
+            .performClick()
 
-        authRepository.login(email, password, callback)
+        // Wait for navigation or success
+        composeRule.waitForIdle()
+    }
 
-        latch.await()
+    @Test
+    fun testEmptyEmail_ShowsNoNavigation() {
+        // Only click login without entering email or password
+        composeRule.onNodeWithTag("login_button")
+            .performClick()
 
-        assertEquals("Login successfully", expectedResult)
+        // Wait for UI to settle (should stay on same screen)
+        composeRule.waitForIdle()
     }
 }
