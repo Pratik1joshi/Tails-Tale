@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/app/src/androidTest/java/com/example/tailstale/LoginActivityTest.kt">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/app/src/androidTest/java/com/example/tailstale/LoginActivityTest.kt" />
+              <option name="updatedContent" value="package com.example.tailstale&#10;&#10;import androidx.compose.ui.test.junit4.createAndroidComposeRule&#10;import androidx.compose.ui.test.onNodeWithTag&#10;import androidx.compose.ui.test.performClick&#10;import androidx.compose.ui.test.performTextInput&#10;import androidx.test.ext.junit.runners.AndroidJUnit4&#10;import com.example.tailstale.view.LoginActivity&#10;import org.junit.Rule&#10;import org.junit.Test&#10;import org.junit.runner.RunWith&#10;&#10;@RunWith(AndroidJUnit4::class)&#10;class LoginActivityTest {&#10;&#10;    @get:Rule&#10;    val composeRule = createAndroidComposeRule&lt;LoginActivity&gt;()&#10;&#10;    @Test&#10;    fun testSuccessfulLogin_showsLoadingOrNavigates() {&#10;        // Enter email&#10;        composeRule.onNodeWithTag(&quot;email&quot;)&#10;            .performTextInput(&quot;user@example.com&quot;)&#10;&#10;        // Enter password&#10;        composeRule.onNodeWithTag(&quot;password&quot;)&#10;            .performTextInput(&quot;password&quot;)&#10;&#10;        // Click Login&#10;        composeRule.onNodeWithTag(&quot;login_button&quot;)&#10;            .performClick()&#10;&#10;        // Wait for UI to settle (you can add more assertions here)&#10;        composeRule.waitForIdle()&#10;    }&#10;&#10;    @Test&#10;    fun testEmptyEmail_ShowsError() {&#10;        // Only click login without entering email or password&#10;        composeRule.onNodeWithTag(&quot;login_button&quot;)&#10;            .performClick()&#10;&#10;        // Wait for UI to settle (you can add more assertions here)&#10;        composeRule.waitForIdle()&#10;    }&#10;}&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
